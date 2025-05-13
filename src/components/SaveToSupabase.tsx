@@ -32,7 +32,7 @@ export default function SaveToSupabase() {
         ac_no: record.acNo,
         in_time: record.entryTime,
         out_time: record.exitTime,
-        // Convert to integer to fix the "invalid input syntax for type integer" error
+        // Convert to integer minutes to fix the "invalid input syntax for type integer" error
         total_minutes: Math.round(record.totalHours * 60),
         status: [record.status],
         working_hours: `${record.totalHours.toFixed(1)}h`,

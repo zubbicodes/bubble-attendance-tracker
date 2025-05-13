@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAttendance } from '@/contexts/AttendanceContext';
@@ -12,10 +11,6 @@ import { useToast } from '@/components/ui/use-toast';
 import { FileText, File, Image } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
-
-// Fix the import by using the correct import approach for jspdf-autotable
-// This line configures jsPDF with the autotable functionality
-import 'jspdf-autotable';
 
 export default function ExportOptions() {
   const { attendanceRecords, date } = useAttendance();
@@ -117,37 +112,61 @@ export default function ExportOptions() {
         yPos += 10;
         doc.setFontSize(14);
         doc.text(`${dept.charAt(0).toUpperCase() + dept.slice(1)} (${deptRecords.length})`, 14, yPos);
-        yPos += 5;
+        yPos += 10;
 
-        // Create table for this department
-        const tableData = deptRecords.map((record, index) => [
-          index + 1,
-          record.name,
-          record.entryTime || '-',
-          record.exitTime || '-',
-          record.totalHours.toFixed(1),
-          record.status
-        ]);
-
-        // Use autoTable which is now attached to jsPDF's prototype
-        // @ts-expect-error jspdf-autotable adds autoTable method to jsPDF prototype
-        doc.autoTable({
-          startY: yPos,
-          head: [['Sr.', 'Name', 'Entry', 'Exit', 'Hours', 'Status']],
-          body: tableData,
-          theme: 'grid',
-          headStyles: { fillColor: [75, 85, 99] },
-          margin: { left: 14, right: 14 },
+        // Create simple table for this department
+        const columns = ['Sr.', 'Name', 'Entry', 'Exit', 'Hours', 'Status'];
+        const columnWidths = [10, 60, 25, 25, 20, 40];
+        const startX = 14;
+        let currentX = startX;
+        
+        // Draw header
+        doc.setFillColor(75, 85, 99);
+        doc.setDrawColor(75, 85, 99);
+        doc.setTextColor(255, 255, 255);
+        doc.rect(startX, yPos, 180, 8, 'F');
+        
+        columns.forEach((col, i) => {
+          doc.text(col, currentX + 2, yPos + 6);
+          currentX += columnWidths[i];
         });
-
-        // @ts-expect-error jspdf-autotable adds lastAutoTable property to jsPDF prototype
-        yPos = doc.lastAutoTable.finalY + 10;
-
-        // Add a new page if we're running out of space
-        if (yPos > 250) {
-          doc.addPage();
-          yPos = 20;
-        }
+        
+        yPos += 8;
+        
+        // Draw rows
+        doc.setTextColor(0, 0, 0);
+        deptRecords.forEach((record, index) => {
+          currentX = startX;
+          const rowData = [
+            (index + 1).toString(),
+            record.name,
+            record.entryTime || '-',
+            record.exitTime || '-',
+            record.totalHours.toFixed(1),
+            record.status
+          ];
+          
+          doc.setDrawColor(220, 220, 220);
+          doc.setFillColor(index % 2 === 0 ? 245 : 255, index % 2 === 0 ? 245 : 255, index % 2 === 0 ? 245 : 255);
+          doc.rect(startX, yPos, 180, 8, 'F');
+          doc.setDrawColor(200, 200, 200);
+          doc.rect(startX, yPos, 180, 8, 'D');
+          
+          rowData.forEach((cell, i) => {
+            doc.text(cell.toString(), currentX + 2, yPos + 6);
+            currentX += columnWidths[i];
+          });
+          
+          yPos += 8;
+          
+          // Add a new page if we're running out of space
+          if (yPos > 270) {
+            doc.addPage();
+            yPos = 20;
+          }
+        });
+        
+        yPos += 10;
       });
 
       // Generate file name and save
