@@ -1,35 +1,84 @@
 
 import { Button } from '@/components/ui/button';
 import { useAttendance } from '@/contexts/AttendanceContext';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
+import { Save } from 'lucide-react';
+import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function SaveToSupabase() {
   const { attendanceRecords, date } = useAttendance();
   const { toast } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
-    // In a real implementation, this would connect to Supabase
-    // For now we'll just simulate a successful save
-    toast({
-      title: "Connect to Supabase",
-      description: "Please connect your project to Supabase to enable database storage.",
-      variant: "default",
-    });
+    if (attendanceRecords.length === 0) {
+      toast({
+        title: "No data to save",
+        description: "Please upload attendance data first.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    // Example of how the data would be saved:
-    console.log('Data to be saved to Supabase:', {
-      date,
-      records: attendanceRecords
-    });
+    setIsSaving(true);
+
+    try {
+      // Format the data for saving to Supabase
+      const formattedRecords = attendanceRecords.map(record => ({
+        date: date,
+        name: record.name,
+        ac_no: record.acNo,
+        in_time: record.entryTime,
+        out_time: record.exitTime,
+        total_minutes: record.totalHours * 60,
+        status: [record.status],
+        working_hours: `${record.totalHours.toFixed(1)}h`,
+      }));
+
+      // First, delete any existing records for this date to avoid duplicates
+      const { error: deleteError } = await supabase
+        .from('daily_attendance')
+        .delete()
+        .eq('date', date);
+
+      if (deleteError) {
+        throw new Error(`Error clearing existing records: ${deleteError.message}`);
+      }
+
+      // Insert the new records
+      const { error: insertError } = await supabase
+        .from('daily_attendance')
+        .insert(formattedRecords);
+
+      if (insertError) {
+        throw new Error(`Error saving records: ${insertError.message}`);
+      }
+
+      toast({
+        title: "Data saved successfully",
+        description: `${attendanceRecords.length} attendance records saved for ${date}`,
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Error saving to Supabase:', error);
+      toast({
+        title: "Error saving data",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
     <Button
       onClick={handleSave}
-      disabled={attendanceRecords.length === 0}
+      disabled={attendanceRecords.length === 0 || isSaving}
       className="bg-emerald-600 hover:bg-emerald-700"
     >
-      Save to Database
+      {isSaving ? 'Saving...' : <><Save className="h-4 w-4 mr-2" /> Save to Database</>}
     </Button>
   );
 }

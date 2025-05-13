@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import StatusFilters from '@/components/StatusFilters';
 import AttendanceTable from '@/components/AttendanceTable';
 import EmployeeStats from '@/components/EmployeeStats';
+import ExportOptions from '@/components/ExportOptions';
 import { Card, CardContent } from '@/components/ui/card';
 
 const Index = () => {
@@ -18,8 +19,13 @@ const Index = () => {
           <div className="grid gap-6">
             <Card>
               <CardContent className="pt-6">
-                <StatusFilters />
-                <AttendanceTable />
+                <div className="flex justify-between items-center mb-4">
+                  <StatusFilters />
+                  <ExportOptions />
+                </div>
+                <div className="attendance-table-container">
+                  <AttendanceTable />
+                </div>
               </CardContent>
             </Card>
             
