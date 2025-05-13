@@ -3,11 +3,14 @@ import { useAttendance } from '@/contexts/AttendanceContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Period, StatsMap } from '@/types';
-import { calculateEmployeeStats } from '@/utils/attendanceUtils';
+import { calculateEmployeeStats, loadEmployeeHistory } from '@/utils/attendanceUtils';
 import { useState, useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 export default function EmployeeStats() {
-  const { selectedEmployee, attendanceRecords } = useAttendance();
+  const { selectedEmployee } = useAttendance();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
   const [employeeStats, setEmployeeStats] = useState<StatsMap>({
     '7days': {
       totalPresent: 0,
@@ -33,20 +36,34 @@ export default function EmployeeStats() {
   });
 
   useEffect(() => {
-    if (selectedEmployee && attendanceRecords.length > 0) {
-      // Find all attendance records for this employee
-      const employeeRecords = attendanceRecords.filter(
-        record => record.name === selectedEmployee.name
-      );
+    const fetchEmployeeHistory = async () => {
+      if (!selectedEmployee) return;
+      
+      setIsLoading(true);
+      try {
+        // Fetch all historical data for this employee
+        const allRecords = await loadEmployeeHistory(selectedEmployee.name);
+        
+        // Calculate stats for each period
+        setEmployeeStats({
+          '7days': calculateEmployeeStats(allRecords, 7),
+          '30days': calculateEmployeeStats(allRecords, 30),
+          'allTime': calculateEmployeeStats(allRecords)
+        });
+      } catch (error) {
+        console.error('Error fetching employee history:', error);
+        toast({
+          title: "Error loading employee history",
+          description: "Failed to load historical attendance data",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-      // Calculate stats for each period
-      setEmployeeStats({
-        '7days': calculateEmployeeStats(employeeRecords, 7),
-        '30days': calculateEmployeeStats(employeeRecords, 30),
-        'allTime': calculateEmployeeStats(employeeRecords)
-      });
-    }
-  }, [selectedEmployee, attendanceRecords]);
+    fetchEmployeeHistory();
+  }, [selectedEmployee, toast]);
 
   if (!selectedEmployee) {
     return null;
@@ -63,44 +80,48 @@ export default function EmployeeStats() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="7days">
-          <TabsList className="mb-4">
-            <TabsTrigger value="7days">Last 7 Days</TabsTrigger>
-            <TabsTrigger value="30days">Last 30 Days</TabsTrigger>
-            <TabsTrigger value="allTime">All Time</TabsTrigger>
-          </TabsList>
+        {isLoading ? (
+          <div className="flex justify-center py-4">Loading employee history...</div>
+        ) : (
+          <Tabs defaultValue="7days">
+            <TabsList className="mb-4">
+              <TabsTrigger value="7days">Last 7 Days</TabsTrigger>
+              <TabsTrigger value="30days">Last 30 Days</TabsTrigger>
+              <TabsTrigger value="allTime">All Time</TabsTrigger>
+            </TabsList>
 
-          {(['7days', '30days', 'allTime'] as Period[]).map((period) => (
-            <TabsContent key={period} value={period}>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <StatCard
-                  title="Present Days"
-                  value={employeeStats[period].totalPresent}
-                />
-                <StatCard
-                  title="Working Hours"
-                  value={employeeStats[period].totalWorkingHours.toFixed(1)}
-                  unit="hrs"
-                />
-                <StatCard
-                  title="Avg. Daily"
-                  value={employeeStats[period].averageDailyHours.toFixed(1)}
-                  unit="hrs/day"
-                />
-                <StatCard
-                  title="Late Entries"
-                  value={employeeStats[period].lateEntries}
-                  icon="🕒"
-                />
-                <StatCard
-                  title="Early Exits"
-                  value={employeeStats[period].earlyExits}
-                  icon="🚪"
-                />
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
+            {(['7days', '30days', 'allTime'] as Period[]).map((period) => (
+              <TabsContent key={period} value={period}>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <StatCard
+                    title="Present Days"
+                    value={employeeStats[period].totalPresent}
+                  />
+                  <StatCard
+                    title="Working Hours"
+                    value={employeeStats[period].totalWorkingHours.toFixed(1)}
+                    unit="hrs"
+                  />
+                  <StatCard
+                    title="Avg. Daily"
+                    value={employeeStats[period].averageDailyHours.toFixed(1)}
+                    unit="hrs/day"
+                  />
+                  <StatCard
+                    title="Late Entries"
+                    value={employeeStats[period].lateEntries}
+                    icon="🕒"
+                  />
+                  <StatCard
+                    title="Early Exits"
+                    value={employeeStats[period].earlyExits}
+                    icon="🚪"
+                  />
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
+        )}
       </CardContent>
     </Card>
   );

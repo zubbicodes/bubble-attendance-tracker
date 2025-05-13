@@ -150,3 +150,110 @@ export function calculateEmployeeStats(
     earlyExits
   };
 }
+
+// New function to load attendance data by date from the database
+export async function loadAttendanceByDate(date: string) {
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    
+    const { data, error } = await supabase
+      .from('daily_attendance')
+      .select('*')
+      .eq('date', date);
+      
+    if (error) {
+      console.error('Error loading attendance data:', error);
+      throw error;
+    }
+    
+    // Transform database format to our app format
+    if (data && data.length > 0) {
+      return data.map((record): EmployeeAttendance => {
+        // Calculate total hours from minutes
+        const totalHours = record.total_minutes ? record.total_minutes / 60 : 0;
+        
+        return {
+          id: record.id,
+          acNo: record.ac_no,
+          name: record.name,
+          date: record.date,
+          entryTime: record.in_time,
+          exitTime: record.out_time,
+          department: getDepartmentForEmployee(record.name),
+          status: record.status && record.status.length > 0 
+            ? record.status[0] as AttendanceStatus 
+            : 'missingCheckout',
+          totalHours: totalHours
+        };
+      });
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Failed to load attendance data:', error);
+    throw error;
+  }
+}
+
+// New function to load employee attendance history
+export async function loadEmployeeHistory(employeeName: string, days: number | null = null) {
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    
+    let query = supabase
+      .from('daily_attendance')
+      .select('*')
+      .eq('name', employeeName)
+      .order('date', { ascending: false });
+    
+    // If days is specified, filter by date range
+    if (days) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      const dateString = cutoffDate.toISOString().split('T')[0];
+      
+      query = query.gte('date', dateString);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error loading employee history:', error);
+      throw error;
+    }
+    
+    // Transform database format to our app format
+    if (data && data.length > 0) {
+      return data.map((record): EmployeeAttendance => {
+        // Calculate total hours from minutes
+        const totalHours = record.total_minutes ? record.total_minutes / 60 : 0;
+        
+        return {
+          id: record.id,
+          acNo: record.ac_no,
+          name: record.name,
+          date: record.date,
+          entryTime: record.in_time,
+          exitTime: record.out_time,
+          department: getDepartmentForEmployee(record.name),
+          status: record.status && record.status.length > 0 
+            ? record.status[0] as AttendanceStatus 
+            : 'missingCheckout',
+          totalHours: totalHours
+        };
+      });
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Failed to load employee history:', error);
+    throw error;
+  }
+}
+
+// Helper function to get department for an employee
+function getDepartmentForEmployee(name: string): Department {
+  // Import and use the function from departmentUtils
+  const { getDepartmentForEmployee } = require('./departmentUtils');
+  return getDepartmentForEmployee(name);
+}

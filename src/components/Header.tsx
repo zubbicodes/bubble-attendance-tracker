@@ -1,31 +1,37 @@
 
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
+import { Settings } from 'lucide-react';
 import { useAttendance } from '@/contexts/AttendanceContext';
-import DepartmentSettings from './DepartmentSettings';
+import DateSelector from './DateSelector';
 import SaveToSupabase from './SaveToSupabase';
 
 export default function Header() {
-  const { date, attendanceRecords } = useAttendance();
+  const { attendanceRecords } = useAttendance();
   
-  const formattedDate = date ? new Date(date).toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  }) : '';
-
   return (
-    <div className="w-full flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-      <div>
-        <h1 className="text-2xl font-bold">ADSONS Attendance Manager</h1>
-        {formattedDate && (
-          <p className="text-muted-foreground mt-1">
-            {formattedDate} • {attendanceRecords.length} Employees
+    <div className="flex flex-col gap-4 mb-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold mb-1">ADSONS Attendance Manager</h1>
+          <p className="text-muted-foreground">
+            Upload, manage, and export attendance data
           </p>
-        )}
+        </div>
+        
+        <div className="flex gap-2">
+          {attendanceRecords.length > 0 && <SaveToSupabase />}
+          <Link to="/settings">
+            <Button variant="outline">
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Button>
+          </Link>
+        </div>
       </div>
-      <div className="flex gap-3">
-        <DepartmentSettings />
-        <SaveToSupabase />
+      
+      <div className="flex justify-between items-center">
+        <DateSelector />
       </div>
     </div>
   );

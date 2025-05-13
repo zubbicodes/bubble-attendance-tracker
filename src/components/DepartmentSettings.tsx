@@ -14,9 +14,10 @@ import { useAttendance } from '@/contexts/AttendanceContext';
 import { Department, DepartmentSettings } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { calculateAttendanceStatus } from '@/utils/attendanceUtils';
 
 export default function DepartmentSettingsDialog() {
-  const { departmentSettings, setDepartmentSettings } = useAttendance();
+  const { attendanceRecords, departmentSettings, setDepartmentSettings, setAttendanceRecords } = useAttendance();
   const [tempSettings, setTempSettings] = useState<DepartmentSettings>(departmentSettings);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
@@ -50,6 +51,9 @@ export default function DepartmentSettingsDialog() {
           
           setDepartmentSettings(settings);
           setTempSettings(settings);
+          
+          // Recalculate attendance status for all records with the new settings
+          recalculateAttendanceStatus(settings);
         }
       } catch (error) {
         console.error('Error loading department settings:', error);
@@ -73,9 +77,6 @@ export default function DepartmentSettingsDialog() {
     setIsSaving(true);
     
     try {
-      // Save settings to context for immediate UI update
-      setDepartmentSettings(tempSettings);
-      
       // Convert settings to database format and save to Supabase
       const departments: Department[] = ['administration', 'supervisor', 'packing', 'production', 'others'];
       
@@ -102,6 +103,12 @@ export default function DepartmentSettingsDialog() {
         throw new Error(`Error saving settings: ${error.message}`);
       }
       
+      // Update settings in context
+      setDepartmentSettings(tempSettings);
+      
+      // Recalculate attendance status for all records with the new settings
+      recalculateAttendanceStatus(tempSettings);
+      
       toast({
         title: "Settings updated",
         description: "Department time settings have been saved",
@@ -116,6 +123,18 @@ export default function DepartmentSettingsDialog() {
     } finally {
       setIsSaving(false);
     }
+  };
+  
+  // Recalculate attendance status for all records based on new settings
+  const recalculateAttendanceStatus = (settings: DepartmentSettings) => {
+    if (attendanceRecords.length === 0) return;
+    
+    const updatedRecords = attendanceRecords.map(record => {
+      const status = calculateAttendanceStatus(record, settings);
+      return { ...record, status };
+    });
+    
+    setAttendanceRecords(updatedRecords);
   };
   
   // Helper function to calculate working hours in minutes
