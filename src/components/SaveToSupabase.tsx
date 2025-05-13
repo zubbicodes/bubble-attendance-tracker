@@ -25,13 +25,15 @@ export default function SaveToSupabase() {
 
     try {
       // Format the data for saving to Supabase
+      // Convert totalHours to integer minutes for database storage
       const formattedRecords = attendanceRecords.map(record => ({
         date: date,
         name: record.name,
         ac_no: record.acNo,
         in_time: record.entryTime,
         out_time: record.exitTime,
-        total_minutes: record.totalHours * 60,
+        // Convert to integer to fix the "invalid input syntax for type integer" error
+        total_minutes: Math.round(record.totalHours * 60),
         status: [record.status],
         working_hours: `${record.totalHours.toFixed(1)}h`,
       }));

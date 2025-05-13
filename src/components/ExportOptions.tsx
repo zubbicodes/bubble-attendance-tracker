@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAttendance } from '@/contexts/AttendanceContext';
@@ -11,7 +12,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { FileText, File, Image } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+// We're importing the types separately to avoid the plugin issue
+import 'jspdf-autotable/dist/jspdf-autotable';
 
 export default function ExportOptions() {
   const { attendanceRecords, date } = useAttendance();
@@ -125,6 +127,7 @@ export default function ExportOptions() {
           record.status
         ]);
 
+        // jspdf-autotable has added the autoTable method to jsPDF's prototype
         // @ts-ignore - jspdf-autotable types are not fully compatible
         doc.autoTable({
           startY: yPos,
@@ -157,7 +160,7 @@ export default function ExportOptions() {
       console.error('Error exporting to PDF:', error);
       toast({
         title: "Export Failed",
-        description: "An error occurred while exporting to PDF",
+        description: error instanceof Error ? error.message : "An error occurred while exporting to PDF",
         variant: "destructive",
       });
     } finally {
