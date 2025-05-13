@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,14 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Status colors for attendance
+				status: {
+					onTime: '#4ade80', // green-400
+					lateEntry: '#fb923c', // orange-400
+					earlyExit: '#facc15', // yellow-400
+					missingCheckout: '#f87171', // red-400
+					lessHours: '#60a5fa', // blue-400
 				}
 			},
 			borderRadius: {

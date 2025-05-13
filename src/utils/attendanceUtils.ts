@@ -1,0 +1,152 @@
+import { AttendanceStatus, EmployeeAttendance, Department, DepartmentSettings } from '@/types';
+import { defaultDepartmentSettings } from './departmentUtils';
+
+// Function to parse time string (e.g., "09:30") to minutes since midnight
+export function timeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+// Function to format minutes to time string (e.g., "09:30")
+export function minutesToTime(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+}
+
+// Calculate total hours between entry and exit times
+export function calculateTotalHours(entryTime: string, exitTime: string): number {
+  const entryMinutes = timeToMinutes(entryTime);
+  const exitMinutes = timeToMinutes(exitTime);
+  
+  // Handle case where exit is on the next day
+  const diffMinutes = exitMinutes >= entryMinutes 
+    ? exitMinutes - entryMinutes 
+    : (24 * 60 - entryMinutes) + exitMinutes;
+  
+  return parseFloat((diffMinutes / 60).toFixed(2));
+}
+
+// Calculate attendance status based on entry/exit times and department settings
+export function calculateAttendanceStatus(
+  attendance: EmployeeAttendance, 
+  settings: DepartmentSettings = defaultDepartmentSettings
+): AttendanceStatus {
+  const { entryTime, exitTime, department } = attendance;
+  const deptSettings = settings[department];
+  
+  // If no entry time, it's a missing checkout
+  if (!entryTime) return 'missingCheckout';
+  
+  // If no exit time, it's a missing checkout
+  if (!exitTime) return 'missingCheckout';
+  
+  const entryMinutes = timeToMinutes(entryTime);
+  const exitMinutes = timeToMinutes(exitTime);
+  const expectedEntryMinutes = timeToMinutes(deptSettings.entry);
+  const expectedExitMinutes = timeToMinutes(deptSettings.exit);
+  
+  // If entry is late
+  if (entryMinutes > expectedEntryMinutes + 15) { // 15-minute grace period
+    return 'lateEntry';
+  }
+  
+  // If exit is early
+  if (exitMinutes < expectedExitMinutes - 15) { // 15-minute grace period
+    return 'earlyExit';
+  }
+  
+  // Calculate expected work hours in minutes
+  const expectedWorkMinutes = expectedExitMinutes - expectedEntryMinutes;
+  const actualWorkMinutes = exitMinutes - entryMinutes;
+  
+  // If worked less than expected hours minus 30 minutes
+  if (actualWorkMinutes < expectedWorkMinutes - 30) {
+    return 'lessHours';
+  }
+  
+  // Otherwise, on time
+  return 'onTime';
+}
+
+export function getStatusIcon(status: AttendanceStatus): string {
+  switch (status) {
+    case 'onTime':
+      return '✅';
+    case 'lateEntry':
+      return '🕒';
+    case 'earlyExit':
+      return '🚪';
+    case 'missingCheckout':
+      return '❌';
+    case 'lessHours':
+      return '⏳';
+    default:
+      return '❓';
+  }
+}
+
+export function getStatusColor(status: AttendanceStatus): string {
+  switch (status) {
+    case 'onTime':
+      return 'bg-status-onTime';
+    case 'lateEntry':
+      return 'bg-status-lateEntry';
+    case 'earlyExit':
+      return 'bg-status-earlyExit';
+    case 'missingCheckout':
+      return 'bg-status-missingCheckout';
+    case 'lessHours':
+      return 'bg-status-lessHours';
+    default:
+      return 'bg-gray-300';
+  }
+}
+
+export function calculateEmployeeStats(
+  attendanceData: EmployeeAttendance[],
+  days: number | null = null
+): {
+  totalPresent: number;
+  totalWorkingHours: number;
+  averageDailyHours: number;
+  lateEntries: number;
+  earlyExits: number;
+} {
+  // Filter by date range if specified
+  let filteredData = [...attendanceData];
+  
+  if (days) {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    filteredData = attendanceData.filter(record => 
+      new Date(record.date) >= cutoffDate
+    );
+  }
+  
+  const totalPresent = filteredData.length;
+  
+  const totalWorkingHours = filteredData.reduce(
+    (sum, record) => sum + record.totalHours, 0
+  );
+  
+  const averageDailyHours = totalPresent > 0 
+    ? parseFloat((totalWorkingHours / totalPresent).toFixed(2)) 
+    : 0;
+  
+  const lateEntries = filteredData.filter(
+    record => record.status === 'lateEntry'
+  ).length;
+  
+  const earlyExits = filteredData.filter(
+    record => record.status === 'earlyExit'
+  ).length;
+  
+  return {
+    totalPresent,
+    totalWorkingHours,
+    averageDailyHours,
+    lateEntries,
+    earlyExits
+  };
+}
