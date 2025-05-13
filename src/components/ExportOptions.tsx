@@ -12,8 +12,10 @@ import { useToast } from '@/components/ui/use-toast';
 import { FileText, File, Image } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
-// We're importing the types separately to avoid the plugin issue
-import 'jspdf-autotable/dist/jspdf-autotable';
+
+// Fix the import by using the correct import approach for jspdf-autotable
+// This line configures jsPDF with the autotable functionality
+import 'jspdf-autotable';
 
 export default function ExportOptions() {
   const { attendanceRecords, date } = useAttendance();
@@ -127,8 +129,8 @@ export default function ExportOptions() {
           record.status
         ]);
 
-        // jspdf-autotable has added the autoTable method to jsPDF's prototype
-        // @ts-ignore - jspdf-autotable types are not fully compatible
+        // Use autoTable which is now attached to jsPDF's prototype
+        // @ts-expect-error jspdf-autotable adds autoTable method to jsPDF prototype
         doc.autoTable({
           startY: yPos,
           head: [['Sr.', 'Name', 'Entry', 'Exit', 'Hours', 'Status']],
@@ -138,7 +140,7 @@ export default function ExportOptions() {
           margin: { left: 14, right: 14 },
         });
 
-        // @ts-ignore - get the y position after the table
+        // @ts-expect-error jspdf-autotable adds lastAutoTable property to jsPDF prototype
         yPos = doc.lastAutoTable.finalY + 10;
 
         // Add a new page if we're running out of space
