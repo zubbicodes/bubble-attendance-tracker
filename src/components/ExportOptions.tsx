@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAttendance } from '@/contexts/AttendanceContext';
@@ -9,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
-import { FilePdf, FileText, Image } from 'lucide-react';
+import { FileText, File, Image } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
@@ -234,7 +233,7 @@ export default function ExportOptions() {
           <FileText className="mr-2 h-4 w-4" /> Export to Excel
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleExportToPDF}>
-          <FilePdf className="mr-2 h-4 w-4" /> Export to PDF
+          <File className="mr-2 h-4 w-4" /> Export to PDF
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleExportToPNG}>
           <Image className="mr-2 h-4 w-4" /> Export to PNG
