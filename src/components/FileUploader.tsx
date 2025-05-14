@@ -56,7 +56,7 @@ export default function FileUploader() {
         setDate(`${year}-${month}-${day}`);
       }
       
-      // Process the file - with updated code that properly handles night shifts
+      // Process the file with updated logic for AM/PM format
       const records = await parseExcelFile(file);
       
       console.log('Processed records:', records);
@@ -64,7 +64,7 @@ export default function FileUploader() {
       setAttendanceRecords(records);
       toast({
         title: "File processed successfully",
-        description: `Loaded ${records.length} attendance records with correct night shift handling`,
+        description: `Loaded ${records.length} attendance records with correct AM/PM time handling`,
         variant: "default"
       });
     } catch (error) {
