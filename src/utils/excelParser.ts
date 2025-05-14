@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { v4 as uuidv4 } from 'uuid';
 import { AttendanceStatus, EmployeeAttendance, Department } from '@/types';
@@ -52,6 +51,7 @@ export const parseExcelFile = async (file: File): Promise<EmployeeAttendance[]> 
           
           if (!timeStr) return; // Skip rows without time
           
+          // Format the key to group entries by employee
           const key = `${acNo}-${name}`;
           
           if (!employeeEntries[key]) {
@@ -77,50 +77,68 @@ export const parseExcelFile = async (file: File): Promise<EmployeeAttendance[]> 
           
           // Sort entries by time to ensure chronological order
           entries.sort((a, b) => {
-            const timeA = a.timeStr.split(' ')[1] || '';
-            const timeB = b.timeStr.split(' ')[1] || '';
-            return timeA.localeCompare(timeB);
+            // Extract time parts (assuming format like "MM/DD/YYYY HH:MM:SS")
+            const timePartsA = a.timeStr.split(' ');
+            const timePartsB = b.timeStr.split(' ');
+            
+            // If the format has a date part, compare the complete strings
+            if (timePartsA.length > 1 && timePartsB.length > 1) {
+              return a.timeStr.localeCompare(b.timeStr);
+            }
+            
+            // Otherwise just compare the time parts
+            return (timePartsA[0] || '').localeCompare(timePartsB[0] || '');
           });
           
-          // Always take first entry as check-in and second as check-out
-          if (entries.length >= 2) {
-            const entryTime = entries[0].timeStr.split(' ')[1] || '';
-            const exitTime = entries[entries.length - 1].timeStr.split(' ')[1] || '';
+          // Only process if there's at least one entry
+          if (entries.length > 0) {
+            // Always take first entry as check-in
+            const firstEntry = entries[0];
+            // Always take last entry as check-out
+            const lastEntry = entries[entries.length - 1];
+            
+            // Extract just the time part (remove date if present)
+            const entryTimeParts = firstEntry.timeStr.split(' ');
+            const exitTimeParts = lastEntry.timeStr.split(' ');
+            
+            // Use the second part if it exists (assuming format like "MM/DD/YYYY HH:MM:SS")
+            // Otherwise use the first part (assuming just time format)
+            const entryTime = entryTimeParts.length > 1 ? entryTimeParts[1] : entryTimeParts[0];
+            const exitTime = exitTimeParts.length > 1 ? exitTimeParts[1] : exitTimeParts[0];
             
             const department = getDepartmentForEmployee(name);
             
-            attendanceRecords.push({
-              id: uuidv4(),
-              acNo,
-              name,
-              date: dateString,
-              entryTime,
-              exitTime,
-              department,
-              status: 'onTime' as AttendanceStatus, // Will be calculated later
-              totalHours: 0, // Will be calculated later
-              exception: entries[0].exception || entries[1].exception, // Use exception from entries
-              operation: entries[0].operation || entries[1].operation // Use operation from entries
-            });
-          } else if (entries.length === 1) {
-            // If only one entry is found, treat it as check-in with missing checkout
-            const entryTime = entries[0].timeStr.split(' ')[1] || '';
-            
-            const department = getDepartmentForEmployee(name);
-            
-            attendanceRecords.push({
-              id: uuidv4(),
-              acNo,
-              name,
-              date: dateString,
-              entryTime,
-              exitTime: null, // Missing check-out
-              department,
-              status: 'missingCheckout' as AttendanceStatus,
-              totalHours: 0,
-              exception: entries[0].exception,
-              operation: entries[0].operation
-            });
+            // Check if we have both entry and exit times and they are not the same
+            if (entries.length >= 2 && entryTime !== exitTime) {
+              attendanceRecords.push({
+                id: uuidv4(),
+                acNo,
+                name,
+                date: dateString,
+                entryTime,
+                exitTime,
+                department,
+                status: 'onTime' as AttendanceStatus, // Will be calculated later
+                totalHours: 0, // Will be calculated later
+                exception: firstEntry.exception || lastEntry.exception,
+                operation: firstEntry.operation || lastEntry.operation
+              });
+            } else {
+              // If only one entry is found or entry and exit are the same, treat it as check-in with missing checkout
+              attendanceRecords.push({
+                id: uuidv4(),
+                acNo,
+                name,
+                date: dateString,
+                entryTime,
+                exitTime: null, // Missing check-out
+                department,
+                status: 'missingCheckout' as AttendanceStatus,
+                totalHours: 0,
+                exception: firstEntry.exception,
+                operation: firstEntry.operation
+              });
+            }
           }
         }
         

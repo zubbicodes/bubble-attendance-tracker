@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -149,12 +148,14 @@ export default function DepartmentSettingsDialog() {
     console.log('Recalculating attendance status with settings:', settings);
     
     const updatedRecords = attendanceRecords.map(record => {
+      // Recalculate status with the updated settings
       const status = calculateAttendanceStatus(record, settings);
-      let totalHours = record.totalHours;
       
       // Recalculate total hours if we have both entry and exit times
+      let totalHours = record.totalHours;
       if (record.entryTime && record.exitTime) {
-        totalHours = calculateWorkingHours(record.entryTime, record.exitTime) / 60;
+        const { calculateTotalHours } = require('@/utils/attendanceUtils');
+        totalHours = calculateTotalHours(record.entryTime, record.exitTime);
       }
       
       return { 
@@ -164,16 +165,16 @@ export default function DepartmentSettingsDialog() {
       };
     });
     
+    console.log('Updated records after recalculation:', updatedRecords);
     setAttendanceRecords(updatedRecords);
   };
   
   // Helper function to calculate working hours in minutes
   const calculateWorkingHours = (entry: string, exit: string): number => {
-    const [entryHours, entryMinutes] = entry.split(':').map(Number);
-    const [exitHours, exitMinutes] = exit.split(':').map(Number);
+    const { timeToMinutes } = require('@/utils/attendanceUtils');
     
-    const entryTotalMinutes = entryHours * 60 + entryMinutes;
-    const exitTotalMinutes = exitHours * 60 + exitMinutes;
+    const entryTotalMinutes = timeToMinutes(entry);
+    const exitTotalMinutes = timeToMinutes(exit);
     
     // Handle case where exit is on the next day
     const diffMinutes = exitTotalMinutes >= entryTotalMinutes 

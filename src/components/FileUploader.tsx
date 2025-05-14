@@ -56,7 +56,11 @@ export default function FileUploader() {
         setDate(`${year}-${month}-${day}`);
       }
       
+      // Load department settings from Supabase before processing
       const records = await parseExcelFile(file);
+      
+      console.log('Processed records:', records);
+      
       setAttendanceRecords(records);
       toast({
         title: "File processed successfully",

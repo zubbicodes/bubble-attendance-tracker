@@ -1,9 +1,41 @@
+
 import { AttendanceStatus, EmployeeAttendance, Department, DepartmentSettings } from '@/types';
 import { defaultDepartmentSettings } from './departmentUtils';
 
 // Function to parse time string (e.g., "09:30") to minutes since midnight
 export function timeToMinutes(time: string): number {
-  const [hours, minutes] = time.split(':').map(Number);
+  if (!time) return 0;
+  
+  // Check if the time is in HH:MM:SS format and convert to HH:MM
+  if (time.split(':').length > 2) {
+    time = time.split(':').slice(0, 2).join(':');
+  }
+  
+  // Handle potential AM/PM format
+  let hours = 0;
+  let minutes = 0;
+  
+  if (time.includes('AM') || time.includes('PM')) {
+    const [timeStr, period] = time.split(' ');
+    const [h, m] = timeStr.split(':').map(Number);
+    
+    hours = h;
+    minutes = m || 0;
+    
+    // Adjust for PM
+    if (period === 'PM' && hours < 12) {
+      hours += 12;
+    }
+    // Adjust for 12 AM
+    if (period === 'AM' && hours === 12) {
+      hours = 0;
+    }
+  } else {
+    const [h, m] = time.split(':').map(Number);
+    hours = h || 0;
+    minutes = m || 0;
+  }
+  
   return hours * 60 + minutes;
 }
 
@@ -19,7 +51,7 @@ export function calculateTotalHours(entryTime: string, exitTime: string): number
   const entryMinutes = timeToMinutes(entryTime);
   const exitMinutes = timeToMinutes(exitTime);
   
-  // Handle case where exit is on the next day
+  // Handle case where exit is on the next day (night shift)
   const diffMinutes = exitMinutes >= entryMinutes 
     ? exitMinutes - entryMinutes 
     : (24 * 60 - entryMinutes) + exitMinutes;
@@ -34,6 +66,11 @@ export function calculateAttendanceStatus(
 ): AttendanceStatus {
   const { entryTime, exitTime, department } = attendance;
   const deptSettings = settings[department];
+  
+  if (!deptSettings) {
+    console.error(`No settings found for department: ${department}`);
+    return 'missingCheckout';
+  }
   
   // If no entry time, it's a missing checkout
   if (!entryTime) return 'missingCheckout';
@@ -58,7 +95,9 @@ export function calculateAttendanceStatus(
   
   // Calculate expected work hours in minutes
   const expectedWorkMinutes = expectedExitMinutes - expectedEntryMinutes;
-  const actualWorkMinutes = exitMinutes - entryMinutes;
+  const actualWorkMinutes = exitMinutes >= entryMinutes 
+    ? exitMinutes - entryMinutes 
+    : (24 * 60 - entryMinutes) + exitMinutes;
   
   // If worked less than expected hours minus 30 minutes
   if (actualWorkMinutes < expectedWorkMinutes - 30) {
