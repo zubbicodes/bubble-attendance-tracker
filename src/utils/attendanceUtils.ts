@@ -1,26 +1,17 @@
 
 import { AttendanceStatus, EmployeeAttendance, Department, DepartmentSettings } from '@/types';
 import { defaultDepartmentSettings } from './departmentUtils';
+import { supabase } from '@/integrations/supabase/client';
+import { getDepartmentForEmployee } from './departmentUtils';
 
-// Function to parse time string (e.g., "09:30") to minutes since midnight
+// Function to parse time string to minutes since midnight
 export function timeToMinutes(time: string): number {
   if (!time) return 0;
   
-  // Check if the time is in HH:MM:SS format and convert to HH:MM
-  if (time.split(':').length > 2) {
-    time = time.split(':').slice(0, 2).join(':');
-  }
-  
-  // Handle potential AM/PM format
-  let hours = 0;
-  let minutes = 0;
-  
+  // Handle AM/PM format
   if (time.includes('AM') || time.includes('PM')) {
-    const [timeStr, period] = time.split(' ');
-    const [h, m] = timeStr.split(':').map(Number);
-    
-    hours = h;
-    minutes = m || 0;
+    const [timePart, period] = time.split(' ');
+    let [hours, minutes] = timePart.split(':').map(Number);
     
     // Adjust for PM
     if (period === 'PM' && hours < 12) {
@@ -30,20 +21,28 @@ export function timeToMinutes(time: string): number {
     if (period === 'AM' && hours === 12) {
       hours = 0;
     }
-  } else {
-    const [h, m] = time.split(':').map(Number);
-    hours = h || 0;
-    minutes = m || 0;
+    
+    return hours * 60 + (minutes || 0);
   }
+  
+  // Handle 24-hour format (HH:MM:SS)
+  const parts = time.split(':');
+  const hours = parseInt(parts[0], 10) || 0;
+  const minutes = parseInt(parts[1], 10) || 0;
   
   return hours * 60 + minutes;
 }
 
-// Function to format minutes to time string (e.g., "09:30")
-export function minutesToTime(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
+// Function to format minutes to time string (e.g., "09:30 AM")
+export function minutesToTimeAMPM(minutes: number): string {
+  const hours24 = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  
+  // Convert to 12-hour format with AM/PM
+  const period = hours24 >= 12 ? 'PM' : 'AM';
+  const hours12 = hours24 % 12 || 12;
+  
+  return `${hours12.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')} ${period}`;
 }
 
 // Calculate total hours between entry and exit times
@@ -52,7 +51,6 @@ export function calculateTotalHours(entryTime: string, exitTime: string): number
   const exitMinutes = timeToMinutes(exitTime);
   
   // Night shift detection: if exit time is less than entry time, assume night shift
-  // For example, entry at 18:00 (1080 minutes) and exit at 08:00 (480 minutes)
   const diffMinutes = exitMinutes < entryMinutes 
     ? (24 * 60 - entryMinutes) + exitMinutes  // Night shift calculation
     : exitMinutes - entryMinutes;             // Same day calculation
@@ -126,17 +124,17 @@ export function calculateAttendanceStatus(
 export function getStatusIcon(status: AttendanceStatus): string {
   switch (status) {
     case 'onTime':
-      return '✅';
+      return '';
     case 'lateEntry':
-      return '🕒';
+      return '';
     case 'earlyExit':
-      return '🚪';
+      return '';
     case 'missingCheckout':
-      return '❌';
+      return '';
     case 'lessHours':
-      return '⏳';
+      return '';
     default:
-      return '❓';
+      return '';
   }
 }
 
@@ -208,8 +206,6 @@ export function calculateEmployeeStats(
 // Load attendance data by date from the database
 export async function loadAttendanceByDate(date: string) {
   try {
-    const { supabase } = await import('@/integrations/supabase/client');
-    
     const { data, error } = await supabase
       .from('daily_attendance')
       .select('*')
@@ -220,24 +216,36 @@ export async function loadAttendanceByDate(date: string) {
       throw error;
     }
     
+    console.log('Database response for date', date, ':', data);
+    
     // Transform database format to our app format
     if (data && data.length > 0) {
       return data.map((record): EmployeeAttendance => {
-        // Calculate total hours from minutes
-        const totalHours = record.total_minutes ? record.total_minutes / 60 : 0;
+        // Convert time format if needed
+        const entryTime = record.in_time ? formatTimeIfNeeded(record.in_time) : null;
+        const exitTime = record.out_time ? formatTimeIfNeeded(record.out_time) : null;
+        
+        // Calculate total hours from minutes or from times
+        let totalHours = record.total_minutes ? record.total_minutes / 60 : 0;
+        if (!totalHours && entryTime && exitTime) {
+          totalHours = calculateTotalHours(entryTime, exitTime);
+        }
+        
+        // Get department for employee
+        const department = getDepartmentForEmployee(record.name);
         
         return {
           id: record.id,
           acNo: record.ac_no,
           name: record.name,
           date: record.date,
-          entryTime: record.in_time,
-          exitTime: record.out_time,
-          department: getDepartmentForEmployee(record.name),
+          entryTime,
+          exitTime,
+          department,
           status: record.status && record.status.length > 0 
             ? record.status[0] as AttendanceStatus 
-            : 'missingCheckout',
-          totalHours: totalHours
+            : calculateStatusFromTimes(entryTime, exitTime, department),
+          totalHours
         };
       });
     }
@@ -249,11 +257,40 @@ export async function loadAttendanceByDate(date: string) {
   }
 }
 
+// Helper function to calculate status if not provided in the database
+function calculateStatusFromTimes(entryTime: string | null, exitTime: string | null, department: Department): AttendanceStatus {
+  if (!entryTime || !exitTime) return 'missingCheckout';
+  
+  const attendance: EmployeeAttendance = {
+    id: '',
+    acNo: '',
+    name: '',
+    date: '',
+    entryTime,
+    exitTime,
+    department,
+    status: 'onTime', // placeholder
+    totalHours: 0
+  };
+  
+  return calculateAttendanceStatus(attendance);
+}
+
+// Format time string to consistent format if needed
+function formatTimeIfNeeded(timeStr: string): string {
+  // Check if already in AM/PM format
+  if (timeStr.includes('AM') || timeStr.includes('PM')) {
+    return timeStr;
+  }
+  
+  // Convert from 24-hour to AM/PM format
+  const minutes = timeToMinutes(timeStr);
+  return minutesToTimeAMPM(minutes);
+}
+
 // Load employee attendance history
 export async function loadEmployeeHistory(employeeName: string, days: number | null = null) {
   try {
-    const { supabase } = await import('@/integrations/supabase/client');
-    
     let query = supabase
       .from('daily_attendance')
       .select('*')
@@ -279,21 +316,31 @@ export async function loadEmployeeHistory(employeeName: string, days: number | n
     // Transform database format to our app format
     if (data && data.length > 0) {
       return data.map((record): EmployeeAttendance => {
-        // Calculate total hours from minutes
-        const totalHours = record.total_minutes ? record.total_minutes / 60 : 0;
+        // Convert time format if needed
+        const entryTime = record.in_time ? formatTimeIfNeeded(record.in_time) : null;
+        const exitTime = record.out_time ? formatTimeIfNeeded(record.out_time) : null;
+        
+        // Calculate total hours from minutes or from times
+        let totalHours = record.total_minutes ? record.total_minutes / 60 : 0;
+        if (!totalHours && entryTime && exitTime) {
+          totalHours = calculateTotalHours(entryTime, exitTime);
+        }
+        
+        // Get department for employee
+        const department = getDepartmentForEmployee(record.name);
         
         return {
           id: record.id,
           acNo: record.ac_no,
           name: record.name,
           date: record.date,
-          entryTime: record.in_time,
-          exitTime: record.out_time,
-          department: getDepartmentForEmployee(record.name),
+          entryTime,
+          exitTime,
+          department,
           status: record.status && record.status.length > 0 
             ? record.status[0] as AttendanceStatus 
-            : 'missingCheckout',
-          totalHours: totalHours
+            : calculateStatusFromTimes(entryTime, exitTime, department),
+          totalHours
         };
       });
     }
@@ -303,11 +350,4 @@ export async function loadEmployeeHistory(employeeName: string, days: number | n
     console.error('Failed to load employee history:', error);
     throw error;
   }
-}
-
-// Helper function to get department for an employee
-function getDepartmentForEmployee(name: string): Department {
-  // Import and use the function from departmentUtils
-  const { getDepartmentForEmployee } = require('./departmentUtils');
-  return getDepartmentForEmployee(name);
 }

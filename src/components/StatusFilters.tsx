@@ -3,12 +3,12 @@ import { AttendanceStatus } from '@/types';
 import { useAttendance } from '@/contexts/AttendanceContext';
 import { getStatusColor } from '@/utils/attendanceUtils';
 
-const statusLabels: Record<AttendanceStatus, { label: string, icon: string }> = {
-  onTime: { label: 'On Time', icon: '✅' },
-  lateEntry: { label: 'Late Entry', icon: '🕒' },
-  earlyExit: { label: 'Early Exit', icon: '🚪' },
-  missingCheckout: { label: 'Missing Checkout', icon: '❌' },
-  lessHours: { label: 'Less Working Hours', icon: '⏳' }
+const statusLabels: Record<AttendanceStatus, { label: string }> = {
+  onTime: { label: 'On Time' },
+  lateEntry: { label: 'Late Entry' },
+  earlyExit: { label: 'Early Exit' },
+  missingCheckout: { label: 'Missing Checkout' },
+  lessHours: { label: 'Less Working Hours' }
 };
 
 export default function StatusFilters() {
@@ -28,7 +28,7 @@ export default function StatusFilters() {
     <div className="mb-6">
       <h2 className="text-lg font-medium mb-3">Attendance Status</h2>
       <div className="flex flex-wrap gap-3">
-        {Object.entries(statusLabels).map(([status, { label, icon }]) => {
+        {Object.entries(statusLabels).map(([status, { label }]) => {
           const count = statusCounts[status as AttendanceStatus] || 0;
           const isSelected = selectedStatus === status;
           
@@ -44,7 +44,6 @@ export default function StatusFilters() {
               onClick={() => handleStatusClick(status as AttendanceStatus)}
               disabled={count === 0}
             >
-              <span className="text-lg">{icon}</span>
               <span className="font-medium">{label}</span>
               <span className="ml-1 bg-white bg-opacity-25 px-2 py-0.5 rounded-full text-sm">
                 {count}

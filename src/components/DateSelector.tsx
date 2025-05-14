@@ -8,7 +8,7 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { loadAttendanceByDate } from '@/utils/attendanceUtils';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function DateSelector() {
   const [isOpen, setIsOpen] = useState(false);
@@ -22,7 +22,6 @@ export default function DateSelector() {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     setDate(dateStr);
     setIsOpen(false);
-    loadDataForDate(dateStr);
   };
 
   const loadDataForDate = async (dateStr: string) => {
@@ -30,7 +29,9 @@ export default function DateSelector() {
     setAppLoading(true);
     
     try {
+      console.log('Loading data for date:', dateStr);
       const records = await loadAttendanceByDate(dateStr);
+      console.log('Loaded records:', records);
       
       if (records.length > 0) {
         setAttendanceRecords(records);
@@ -39,6 +40,7 @@ export default function DateSelector() {
           description: `Loaded ${records.length} attendance records for ${dateStr}`,
         });
       } else {
+        setAttendanceRecords([]);
         toast({
           title: "No records found",
           description: `No attendance records found for ${dateStr}`,

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,12 +9,13 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogClose,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { useAttendance } from '@/contexts/AttendanceContext';
 import { Department, DepartmentSettings } from '@/types';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { calculateAttendanceStatus } from '@/utils/attendanceUtils';
+import { calculateAttendanceStatus, timeToMinutes } from '@/utils/attendanceUtils';
 
 export default function DepartmentSettingsDialog() {
   const { attendanceRecords, departmentSettings, setDepartmentSettings, setAttendanceRecords } = useAttendance();
@@ -21,6 +23,15 @@ export default function DepartmentSettingsDialog() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  
+  // Default times from the image
+  const defaultTimes = {
+    administration: { entry: "09:15 AM", exit: "05:45 PM" },
+    supervisor: { entry: "08:15 AM", exit: "07:45 PM" },
+    packing: { entry: "08:15 AM", exit: "07:45 PM" },
+    production: { entry: "08:15 AM", exit: "07:45 AM" },
+    others: { entry: "08:15 AM", exit: "07:45 AM" }
+  };
   
   // Load department settings from Supabase when component mounts
   useEffect(() => {
@@ -38,20 +49,24 @@ export default function DepartmentSettingsDialog() {
             description: "Failed to load department settings. Using defaults.",
             variant: "destructive"
           });
+          
+          // Use the default times from image
+          setDepartmentSettings(defaultTimes);
+          setTempSettings(defaultTimes);
           return;
         }
         
         if (data && data.length > 0) {
           console.log('Loaded department settings:', data);
           // Convert database format to our app's format
-          const settings: DepartmentSettings = { ...departmentSettings };
+          const settings: DepartmentSettings = { ...defaultTimes };
           
           data.forEach(record => {
             const dept = record.name as Department;
             if (dept in settings) {
               settings[dept] = {
-                entry: record.starttime,
-                exit: record.endtime
+                entry: formatTimeToAMPM(record.starttime),
+                exit: formatTimeToAMPM(record.endtime)
               };
             }
           });
@@ -63,6 +78,10 @@ export default function DepartmentSettingsDialog() {
           if (attendanceRecords.length > 0) {
             recalculateAttendanceStatus(settings);
           }
+        } else {
+          // No settings found in DB, use defaults
+          setDepartmentSettings(defaultTimes);
+          setTempSettings(defaultTimes);
         }
       } catch (error) {
         console.error('Error loading department settings:', error);
@@ -71,6 +90,10 @@ export default function DepartmentSettingsDialog() {
           description: "Failed to load department settings. Using defaults.",
           variant: "destructive"
         });
+        
+        // Use the default times from image
+        setDepartmentSettings(defaultTimes);
+        setTempSettings(defaultTimes);
       } finally {
         setIsLoading(false);
       }
@@ -78,6 +101,40 @@ export default function DepartmentSettingsDialog() {
     
     fetchSettings();
   }, []);
+
+  // Convert 24-hour format to AM/PM format
+  function formatTimeToAMPM(time24: string): string {
+    if (!time24) return "";
+    
+    // Extract hours and minutes
+    const [hours, minutes] = time24.split(':').map(Number);
+    
+    // Determine AM/PM
+    const period = hours >= 12 ? 'PM' : 'AM';
+    
+    // Convert hours to 12-hour format
+    const hours12 = hours % 12 || 12;
+    
+    // Format as "hh:mm AM/PM"
+    return `${hours12.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
+  }
+  
+  // Convert AM/PM format to 24-hour format for database
+  function formatTimeTo24Hour(timeAMPM: string): string {
+    if (!timeAMPM) return "";
+    
+    const [timePart, period] = timeAMPM.split(' ');
+    let [hours, minutes] = timePart.split(':').map(Number);
+    
+    // Convert to 24-hour format
+    if (period === 'PM' && hours !== 12) {
+      hours += 12;
+    } else if (period === 'AM' && hours === 12) {
+      hours = 0;
+    }
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
+  }
   
   const handleTimeChange = (dept: Department, type: 'entry' | 'exit', value: string) => {
     setTempSettings(prev => ({
@@ -103,13 +160,27 @@ export default function DepartmentSettingsDialog() {
         .in('name', departments);
       
       // Insert new records
-      const records = departments.map(dept => ({
-        name: dept,
-        starttime: tempSettings[dept].entry,
-        endtime: tempSettings[dept].exit,
-        workinghours: calculateWorkingHours(tempSettings[dept].entry, tempSettings[dept].exit),
-        graceminutes: 15 // Default grace period
-      }));
+      const records = departments.map(dept => {
+        const entry24 = formatTimeTo24Hour(tempSettings[dept].entry);
+        const exit24 = formatTimeTo24Hour(tempSettings[dept].exit);
+        
+        // Calculate working hours in minutes
+        const entryMinutes = timeToMinutes(entry24);
+        const exitMinutes = timeToMinutes(exit24);
+        
+        // Handle case where exit is on the next day (night shift)
+        const workinghours = exitMinutes >= entryMinutes 
+          ? exitMinutes - entryMinutes 
+          : (24 * 60 - entryMinutes) + exitMinutes;
+          
+        return {
+          name: dept,
+          starttime: entry24,
+          endtime: exit24,
+          workinghours: workinghours,
+          graceminutes: 15 // Default grace period
+        };
+      });
       
       const { error } = await supabase
         .from('department_settings')
@@ -154,8 +225,18 @@ export default function DepartmentSettingsDialog() {
       // Recalculate total hours if we have both entry and exit times
       let totalHours = record.totalHours;
       if (record.entryTime && record.exitTime) {
-        const { calculateTotalHours } = require('@/utils/attendanceUtils');
-        totalHours = calculateTotalHours(record.entryTime, record.exitTime);
+        const entryTime = record.entryTime;
+        const exitTime = record.exitTime;
+        
+        const entryMinutes = timeToMinutes(entryTime);
+        const exitMinutes = timeToMinutes(exitTime);
+        
+        // Calculate total hours
+        const diffMinutes = exitMinutes >= entryMinutes 
+          ? exitMinutes - entryMinutes 
+          : (24 * 60 - entryMinutes) + exitMinutes;
+          
+        totalHours = parseFloat((diffMinutes / 60).toFixed(2));
       }
       
       return { 
@@ -169,21 +250,6 @@ export default function DepartmentSettingsDialog() {
     setAttendanceRecords(updatedRecords);
   };
   
-  // Helper function to calculate working hours in minutes
-  const calculateWorkingHours = (entry: string, exit: string): number => {
-    const { timeToMinutes } = require('@/utils/attendanceUtils');
-    
-    const entryTotalMinutes = timeToMinutes(entry);
-    const exitTotalMinutes = timeToMinutes(exit);
-    
-    // Handle case where exit is on the next day
-    const diffMinutes = exitTotalMinutes >= entryTotalMinutes 
-      ? exitTotalMinutes - entryTotalMinutes 
-      : (24 * 60 - entryTotalMinutes) + exitTotalMinutes;
-      
-    return diffMinutes;
-  };
-  
   const departments: Department[] = ['administration', 'supervisor', 'packing', 'production', 'others'];
   
   return (
@@ -194,6 +260,9 @@ export default function DepartmentSettingsDialog() {
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Department Time Settings</DialogTitle>
+          <DialogDescription>
+            Configure the standard working hours for each department.
+          </DialogDescription>
         </DialogHeader>
         <div className="py-4">
           {isLoading ? (
@@ -210,16 +279,18 @@ export default function DepartmentSettingsDialog() {
                   <div className="capitalize">{dept}</div>
                   <div>
                     <Input
-                      type="time"
+                      type="text"
                       value={tempSettings[dept].entry}
                       onChange={(e) => handleTimeChange(dept, 'entry', e.target.value)}
+                      placeholder="09:00 AM"
                     />
                   </div>
                   <div>
                     <Input
-                      type="time"
+                      type="text"
                       value={tempSettings[dept].exit}
                       onChange={(e) => handleTimeChange(dept, 'exit', e.target.value)}
+                      placeholder="05:00 PM"
                     />
                   </div>
                 </div>
@@ -234,6 +305,7 @@ export default function DepartmentSettingsDialog() {
           <Button 
             onClick={handleSave} 
             disabled={isSaving || isLoading}
+            className="bg-blue-900 hover:bg-blue-800"
           >
             {isSaving ? 'Saving...' : 'Save Settings'}
           </Button>
