@@ -151,7 +151,7 @@ export function calculateEmployeeStats(
   };
 }
 
-// New function to load attendance data by date from the database
+// Load attendance data by date from the database
 export async function loadAttendanceByDate(date: string) {
   try {
     const { supabase } = await import('@/integrations/supabase/client');
@@ -195,7 +195,7 @@ export async function loadAttendanceByDate(date: string) {
   }
 }
 
-// New function to load employee attendance history
+// Load employee attendance history
 export async function loadEmployeeHistory(employeeName: string, days: number | null = null) {
   try {
     const { supabase } = await import('@/integrations/supabase/client');

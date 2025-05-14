@@ -20,11 +20,13 @@ export default function DepartmentSettingsDialog() {
   const { attendanceRecords, departmentSettings, setDepartmentSettings, setAttendanceRecords } = useAttendance();
   const [tempSettings, setTempSettings] = useState<DepartmentSettings>(departmentSettings);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
   // Load department settings from Supabase when component mounts
   useEffect(() => {
     const fetchSettings = async () => {
+      setIsLoading(true);
       try {
         const { data, error } = await supabase
           .from('department_settings')
@@ -32,10 +34,16 @@ export default function DepartmentSettingsDialog() {
           
         if (error) {
           console.error('Error fetching department settings:', error);
+          toast({
+            title: "Error loading settings",
+            description: "Failed to load department settings. Using defaults.",
+            variant: "destructive"
+          });
           return;
         }
         
         if (data && data.length > 0) {
+          console.log('Loaded department settings:', data);
           // Convert database format to our app's format
           const settings: DepartmentSettings = { ...departmentSettings };
           
@@ -53,10 +61,19 @@ export default function DepartmentSettingsDialog() {
           setTempSettings(settings);
           
           // Recalculate attendance status for all records with the new settings
-          recalculateAttendanceStatus(settings);
+          if (attendanceRecords.length > 0) {
+            recalculateAttendanceStatus(settings);
+          }
         }
       } catch (error) {
         console.error('Error loading department settings:', error);
+        toast({
+          title: "Error loading settings",
+          description: "Failed to load department settings. Using defaults.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
       }
     };
     
@@ -129,9 +146,22 @@ export default function DepartmentSettingsDialog() {
   const recalculateAttendanceStatus = (settings: DepartmentSettings) => {
     if (attendanceRecords.length === 0) return;
     
+    console.log('Recalculating attendance status with settings:', settings);
+    
     const updatedRecords = attendanceRecords.map(record => {
       const status = calculateAttendanceStatus(record, settings);
-      return { ...record, status };
+      let totalHours = record.totalHours;
+      
+      // Recalculate total hours if we have both entry and exit times
+      if (record.entryTime && record.exitTime) {
+        totalHours = calculateWorkingHours(record.entryTime, record.exitTime) / 60;
+      }
+      
+      return { 
+        ...record, 
+        status,
+        totalHours 
+      };
     });
     
     setAttendanceRecords(updatedRecords);
@@ -165,32 +195,36 @@ export default function DepartmentSettingsDialog() {
           <DialogTitle>Department Time Settings</DialogTitle>
         </DialogHeader>
         <div className="py-4">
-          <div className="grid gap-6">
-            <div className="grid grid-cols-3 text-sm font-medium mb-1">
-              <div>Department</div>
-              <div>Entry Time</div>
-              <div>Exit Time</div>
-            </div>
-            {departments.map((dept) => (
-              <div key={dept} className="grid grid-cols-3 gap-4 items-center">
-                <div className="capitalize">{dept}</div>
-                <div>
-                  <Input
-                    type="time"
-                    value={tempSettings[dept].entry}
-                    onChange={(e) => handleTimeChange(dept, 'entry', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Input
-                    type="time"
-                    value={tempSettings[dept].exit}
-                    onChange={(e) => handleTimeChange(dept, 'exit', e.target.value)}
-                  />
-                </div>
+          {isLoading ? (
+            <div className="text-center py-4">Loading department settings...</div>
+          ) : (
+            <div className="grid gap-6">
+              <div className="grid grid-cols-3 text-sm font-medium mb-1">
+                <div>Department</div>
+                <div>Entry Time</div>
+                <div>Exit Time</div>
               </div>
-            ))}
-          </div>
+              {departments.map((dept) => (
+                <div key={dept} className="grid grid-cols-3 gap-4 items-center">
+                  <div className="capitalize">{dept}</div>
+                  <div>
+                    <Input
+                      type="time"
+                      value={tempSettings[dept].entry}
+                      onChange={(e) => handleTimeChange(dept, 'entry', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      type="time"
+                      value={tempSettings[dept].exit}
+                      onChange={(e) => handleTimeChange(dept, 'exit', e.target.value)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex justify-end gap-2">
           <DialogClose asChild>
@@ -198,7 +232,7 @@ export default function DepartmentSettingsDialog() {
           </DialogClose>
           <Button 
             onClick={handleSave} 
-            disabled={isSaving}
+            disabled={isSaving || isLoading}
           >
             {isSaving ? 'Saving...' : 'Save Settings'}
           </Button>

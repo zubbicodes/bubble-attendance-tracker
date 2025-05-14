@@ -1,3 +1,4 @@
+
 import * as XLSX from 'xlsx';
 import { v4 as uuidv4 } from 'uuid';
 import { AttendanceStatus, EmployeeAttendance, Department } from '@/types';
@@ -34,102 +35,97 @@ export const parseExcelFile = async (file: File): Promise<EmployeeAttendance[]> 
           dateString = today.toISOString().split('T')[0];
         }
         
-        // Process each row
-        const attendanceRecords: EmployeeAttendance[] = jsonData.map((row: any) => {
+        // Process each row and track entries by employee
+        const employeeEntries: Record<string, { 
+          entries: Array<{timeStr: string, exception: string, operation: string}>,
+          acNo: string,
+          name: string
+        }> = {};
+        
+        // First, collect all entries for each employee
+        jsonData.forEach((row: any) => {
           const acNo = row['AC.No.'] || row['AC No'] || row['AC.No'] || '';
           const name = row['Name'] || '';
           const timeStr = row['Time'] || '';
           const operation = row['Operation'] || '';
           const exception = row['Exception'] || '';
           
-          // Parse time and determine whether it's entry or exit
-          let entryTime = null;
-          let exitTime = null;
+          if (!timeStr) return; // Skip rows without time
           
-          if (operation === 'FOT' && timeStr) {
-            const parts = timeStr.split(' ');
-            if (parts.length === 2) {
-              // Assuming time format like "5/12/2025 7:54"
-              const timePart = parts[1];
-              
-              // If it contains "OverTime In", it's an entry
-              if (exception === 'OverTime In') {
-                entryTime = timePart;
-              }
-              // If it contains "OverTime Out", it's an exit
-              else if (exception === 'OverTime Out') {
-                exitTime = timePart;
-              }
-            }
-          } else if (timeStr) {
-            // For non-FOT entries, we need to determine based on time patterns
-            const parts = timeStr.split(' ');
-            if (parts.length === 2) {
-              const timePart = parts[1];
-              const hour = parseInt(timePart.split(':')[0]);
-              
-              // Morning times are typically entry
-              if (hour < 12) {
-                entryTime = timePart;
-              } else {
-                // Afternoon/evening times are typically exit
-                exitTime = timePart;
-              }
-            }
+          const key = `${acNo}-${name}`;
+          
+          if (!employeeEntries[key]) {
+            employeeEntries[key] = {
+              entries: [],
+              acNo,
+              name
+            };
           }
           
-          const department = getDepartmentForEmployee(name);
-          
-          return {
-            id: uuidv4(),
-            acNo,
-            name,
-            date: dateString,
-            entryTime,
-            exitTime,
-            department,
-            status: 'onTime' as AttendanceStatus, // Default, will be calculated later
-            totalHours: 0, // Will be calculated later
+          employeeEntries[key].entries.push({
+            timeStr,
             exception,
             operation
-          };
+          });
         });
         
-        // Combine multiple entries for the same employee on the same day
-        const employeeMap = new Map<string, EmployeeAttendance>();
+        // Then, process entries to create attendance records
+        const attendanceRecords: EmployeeAttendance[] = [];
         
-        attendanceRecords.forEach(record => {
-          const key = `${record.acNo}-${record.name}`;
+        for (const key in employeeEntries) {
+          const { entries, acNo, name } = employeeEntries[key];
           
-          if (employeeMap.has(key)) {
-            const existingRecord = employeeMap.get(key)!;
+          // Sort entries by time to ensure chronological order
+          entries.sort((a, b) => {
+            const timeA = a.timeStr.split(' ')[1] || '';
+            const timeB = b.timeStr.split(' ')[1] || '';
+            return timeA.localeCompare(timeB);
+          });
+          
+          // Always take first entry as check-in and second as check-out
+          if (entries.length >= 2) {
+            const entryTime = entries[0].timeStr.split(' ')[1] || '';
+            const exitTime = entries[entries.length - 1].timeStr.split(' ')[1] || '';
             
-            // If the current record has an entry time and the existing doesn't
-            if (record.entryTime && !existingRecord.entryTime) {
-              existingRecord.entryTime = record.entryTime;
-            }
+            const department = getDepartmentForEmployee(name);
             
-            // If the current record has an exit time and the existing doesn't
-            if (record.exitTime && !existingRecord.exitTime) {
-              existingRecord.exitTime = record.exitTime;
-            }
+            attendanceRecords.push({
+              id: uuidv4(),
+              acNo,
+              name,
+              date: dateString,
+              entryTime,
+              exitTime,
+              department,
+              status: 'onTime' as AttendanceStatus, // Will be calculated later
+              totalHours: 0, // Will be calculated later
+              exception: entries[0].exception || entries[1].exception, // Use exception from entries
+              operation: entries[0].operation || entries[1].operation // Use operation from entries
+            });
+          } else if (entries.length === 1) {
+            // If only one entry is found, treat it as check-in with missing checkout
+            const entryTime = entries[0].timeStr.split(' ')[1] || '';
             
-            // Keep the exception and operation if they exist
-            if (record.exception) {
-              existingRecord.exception = record.exception;
-            }
+            const department = getDepartmentForEmployee(name);
             
-            if (record.operation) {
-              existingRecord.operation = record.operation;
-            }
-            
-          } else {
-            employeeMap.set(key, record);
+            attendanceRecords.push({
+              id: uuidv4(),
+              acNo,
+              name,
+              date: dateString,
+              entryTime,
+              exitTime: null, // Missing check-out
+              department,
+              status: 'missingCheckout' as AttendanceStatus,
+              totalHours: 0,
+              exception: entries[0].exception,
+              operation: entries[0].operation
+            });
           }
-        });
+        }
         
-        // Convert map back to array and calculate status and hours
-        const processedRecords = Array.from(employeeMap.values()).map(record => {
+        // Calculate status and total hours for each record
+        const processedRecords = attendanceRecords.map(record => {
           // Calculate total hours if both entry and exit times exist
           if (record.entryTime && record.exitTime) {
             record.totalHours = calculateTotalHours(record.entryTime, record.exitTime);
