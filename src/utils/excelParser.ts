@@ -1,3 +1,4 @@
+
 import * as XLSX from 'xlsx';
 import { v4 as uuidv4 } from 'uuid';
 import { AttendanceStatus, EmployeeAttendance, Department } from '@/types';
@@ -92,14 +93,15 @@ export const parseExcelFile = async (file: File): Promise<EmployeeAttendance[]> 
           
           // Only process if there's at least one entry
           if (entries.length > 0) {
-            // Always take first entry as check-in
-            const firstEntry = entries[0];
-            // Always take last entry as check-out
-            const lastEntry = entries[entries.length - 1];
+            // IMPORTANT: Always take first entry as check-in time
+            const entryRecord = entries[0];
+            
+            // IMPORTANT: Always take last entry as check-out time
+            const exitRecord = entries[entries.length - 1];
             
             // Extract just the time part (remove date if present)
-            const entryTimeParts = firstEntry.timeStr.split(' ');
-            const exitTimeParts = lastEntry.timeStr.split(' ');
+            const entryTimeParts = entryRecord.timeStr.split(' ');
+            const exitTimeParts = exitRecord.timeStr.split(' ');
             
             // Use the second part if it exists (assuming format like "MM/DD/YYYY HH:MM:SS")
             // Otherwise use the first part (assuming just time format)
@@ -108,8 +110,8 @@ export const parseExcelFile = async (file: File): Promise<EmployeeAttendance[]> 
             
             const department = getDepartmentForEmployee(name);
             
-            // Check if we have both entry and exit times and they are not the same
-            if (entries.length >= 2 && entryTime !== exitTime) {
+            // If we have both entry and exit times and they are not the same
+            if (entryTime !== exitTime) {
               attendanceRecords.push({
                 id: uuidv4(),
                 acNo,
@@ -120,8 +122,8 @@ export const parseExcelFile = async (file: File): Promise<EmployeeAttendance[]> 
                 department,
                 status: 'onTime' as AttendanceStatus, // Will be calculated later
                 totalHours: 0, // Will be calculated later
-                exception: firstEntry.exception || lastEntry.exception,
-                operation: firstEntry.operation || lastEntry.operation
+                exception: entryRecord.exception || exitRecord.exception,
+                operation: entryRecord.operation || exitRecord.operation
               });
             } else {
               // If only one entry is found or entry and exit are the same, treat it as check-in with missing checkout
@@ -135,8 +137,8 @@ export const parseExcelFile = async (file: File): Promise<EmployeeAttendance[]> 
                 department,
                 status: 'missingCheckout' as AttendanceStatus,
                 totalHours: 0,
-                exception: firstEntry.exception,
-                operation: firstEntry.operation
+                exception: entryRecord.exception,
+                operation: entryRecord.operation
               });
             }
           }

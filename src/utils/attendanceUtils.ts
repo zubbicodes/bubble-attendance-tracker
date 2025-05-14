@@ -51,10 +51,11 @@ export function calculateTotalHours(entryTime: string, exitTime: string): number
   const entryMinutes = timeToMinutes(entryTime);
   const exitMinutes = timeToMinutes(exitTime);
   
-  // Handle case where exit is on the next day (night shift)
-  const diffMinutes = exitMinutes >= entryMinutes 
-    ? exitMinutes - entryMinutes 
-    : (24 * 60 - entryMinutes) + exitMinutes;
+  // Night shift detection: if exit time is less than entry time, assume night shift
+  // For example, entry at 18:00 (1080 minutes) and exit at 08:00 (480 minutes)
+  const diffMinutes = exitMinutes < entryMinutes 
+    ? (24 * 60 - entryMinutes) + exitMinutes  // Night shift calculation
+    : exitMinutes - entryMinutes;             // Same day calculation
   
   return parseFloat((diffMinutes / 60).toFixed(2));
 }
@@ -83,21 +84,35 @@ export function calculateAttendanceStatus(
   const expectedEntryMinutes = timeToMinutes(deptSettings.entry);
   const expectedExitMinutes = timeToMinutes(deptSettings.exit);
   
+  // Handle night shift detection for department settings
+  const isNightShiftDept = expectedExitMinutes < expectedEntryMinutes;
+  const isNightShiftEmployee = exitMinutes < entryMinutes;
+  
   // If entry is late
-  if (entryMinutes > expectedEntryMinutes + 15) { // 15-minute grace period
+  // Night shift: If entry time is after expected entry time and before midnight
+  // Day shift: If entry time is after expected entry time
+  if ((isNightShiftDept && entryMinutes > expectedEntryMinutes && entryMinutes < 24*60) || 
+      (!isNightShiftDept && entryMinutes > expectedEntryMinutes + 15)) { // 15-minute grace period
     return 'lateEntry';
   }
   
   // If exit is early
-  if (exitMinutes < expectedExitMinutes - 15) { // 15-minute grace period
+  // Night shift: If exit time is before expected exit time and after midnight
+  // Day shift: If exit time is before expected exit time
+  if ((isNightShiftDept && exitMinutes < expectedExitMinutes && exitMinutes >= 0) || 
+      (!isNightShiftDept && exitMinutes < expectedExitMinutes - 15)) { // 15-minute grace period
     return 'earlyExit';
   }
   
   // Calculate expected work hours in minutes
-  const expectedWorkMinutes = expectedExitMinutes - expectedEntryMinutes;
-  const actualWorkMinutes = exitMinutes >= entryMinutes 
-    ? exitMinutes - entryMinutes 
-    : (24 * 60 - entryMinutes) + exitMinutes;
+  const expectedWorkMinutes = isNightShiftDept
+    ? (24 * 60 - expectedEntryMinutes) + expectedExitMinutes // Night shift
+    : expectedExitMinutes - expectedEntryMinutes;            // Day shift
+  
+  // Calculate actual work hours in minutes
+  const actualWorkMinutes = isNightShiftEmployee
+    ? (24 * 60 - entryMinutes) + exitMinutes // Night shift
+    : exitMinutes - entryMinutes;            // Day shift
   
   // If worked less than expected hours minus 30 minutes
   if (actualWorkMinutes < expectedWorkMinutes - 30) {
