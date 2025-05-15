@@ -1,13 +1,19 @@
 
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { Settings } from 'lucide-react';
+import { Settings, LogOut } from 'lucide-react';
 import { useAttendance } from '@/contexts/AttendanceContext';
+import { useAuth } from '@/contexts/AuthContext';
 import DateSelector from './DateSelector';
 import SaveToSupabase from './SaveToSupabase';
 
 export default function Header() {
   const { attendanceRecords } = useAttendance();
+  const { logout } = useAuth();
+  
+  const handleLogout = () => {
+    logout();
+  };
   
   return (
     <div className="flex flex-col gap-4 mb-6">
@@ -27,6 +33,10 @@ export default function Header() {
               Settings
             </Button>
           </Link>
+          <Button variant="outline" onClick={handleLogout}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
         </div>
       </div>
       
