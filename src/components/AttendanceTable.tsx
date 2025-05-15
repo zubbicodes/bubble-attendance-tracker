@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { EmployeeAttendance, AttendanceStatus, Department } from '@/types';
 import { useAttendance } from '@/contexts/AttendanceContext';
@@ -62,11 +63,25 @@ export default function AttendanceTable() {
   const handleRowClick = (employee: EmployeeAttendance) => {
     setSelectedEmployee(employee);
     
-    // Scroll to employee stats section after short delay to allow rendering
+    // Enhanced smooth scroll to employee stats section
     setTimeout(() => {
       const statsElement = document.getElementById('employee-stats-section');
       if (statsElement) {
-        statsElement.scrollIntoView({ behavior: 'smooth' });
+        // Get the stats element position
+        const statsPosition = statsElement.getBoundingClientRect().top;
+        const offsetPosition = statsPosition + window.pageYOffset - 20; // Add some padding at the top
+        
+        // Scroll with enhanced animation
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+        
+        // Add highlight animation to the stats section
+        statsElement.classList.add('animate-pulse');
+        setTimeout(() => {
+          statsElement.classList.remove('animate-pulse');
+        }, 1500); // Remove the animation after 1.5 seconds
       }
     }, 100);
   };

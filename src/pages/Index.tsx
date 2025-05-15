@@ -29,7 +29,9 @@ const Index = () => {
               </CardContent>
             </Card>
             
-            <EmployeeStats />
+            <div className="scroll-mt-8 transition-all duration-500" id="employee-stats-section">
+              <EmployeeStats />
+            </div>
           </div>
         </div>
       </div>
