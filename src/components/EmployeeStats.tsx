@@ -10,7 +10,7 @@ import {
   ChartTooltip,
   ChartTooltipContent 
 } from '@/components/ui/chart';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 
 export default function EmployeeStats() {
   const { selectedEmployee } = useAttendance();
@@ -40,6 +40,7 @@ export default function EmployeeStats() {
     }
   });
   const [chartData, setChartData] = useState<any[]>([]);
+  const [dailyHoursData, setDailyHoursData] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchEmployeeHistory = async () => {
@@ -59,7 +60,7 @@ export default function EmployeeStats() {
         
         setEmployeeStats(stats);
         
-        // Prepare chart data
+        // Prepare status distribution chart data
         const chartData = [
           {
             name: "On Time",
@@ -89,6 +90,26 @@ export default function EmployeeStats() {
         ];
         
         setChartData(chartData);
+        
+        // Prepare daily working hours data for line chart
+        // Sort by date ascending to show proper timeline
+        const sortedRecords = [...allRecords].sort((a, b) => 
+          new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+        
+        // Get the last 14 days of data to keep chart readable
+        const recentRecords = sortedRecords.slice(-14);
+        
+        const dailyData = recentRecords.map(record => ({
+          date: new Date(record.date).toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+          }),
+          hours: record.totalHours,
+          status: record.status
+        }));
+        
+        setDailyHoursData(dailyData);
       } catch (error) {
         console.error('Error fetching employee history:', error);
         toast({
@@ -155,6 +176,50 @@ export default function EmployeeStats() {
                       title="Early Exits"
                       value={employeeStats[period].earlyExits}
                     />
+                  </div>
+                  
+                  {/* Daily Working Hours Line Chart */}
+                  <div className="mt-4">
+                    <h3 className="text-sm font-medium mb-3">Daily Working Hours Trend</h3>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={dailyHoursData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                          <XAxis 
+                            dataKey="date" 
+                            tick={{ fontSize: 12 }} 
+                            tickMargin={10}
+                          />
+                          <YAxis 
+                            tickMargin={10}
+                            label={{ 
+                              value: 'Hours', 
+                              angle: -90, 
+                              position: 'insideLeft',
+                              style: { textAnchor: 'middle', fontSize: 12 }
+                            }}
+                          />
+                          <Tooltip 
+                            formatter={(value) => [`${value} hrs`, 'Working Hours']}
+                            labelFormatter={(label) => `Date: ${label}`}
+                            contentStyle={{ 
+                              backgroundColor: 'white', 
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '0.375rem',
+                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                            }}
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="hours" 
+                            stroke="#2563eb" 
+                            strokeWidth={2}
+                            activeDot={{ r: 6, fill: "#2563eb", stroke: "white", strokeWidth: 2 }} 
+                            dot={{ r: 4, fill: "#2563eb", stroke: "white", strokeWidth: 2 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
                   
                   {/* Attendance Status Chart */}
