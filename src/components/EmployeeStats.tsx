@@ -109,7 +109,7 @@ export default function EmployeeStats() {
   }
 
   return (
-    <Card className="w-full mt-6">
+    <Card className="w-full mt-6" id="employee-stats-section">
       <CardHeader>
         <CardTitle className="text-lg flex items-center justify-between">
           <div>{selectedEmployee.name}</div>

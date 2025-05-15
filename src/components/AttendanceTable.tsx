@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { EmployeeAttendance, AttendanceStatus, Department } from '@/types';
 import { useAttendance } from '@/contexts/AttendanceContext';
@@ -62,6 +61,14 @@ export default function AttendanceTable() {
 
   const handleRowClick = (employee: EmployeeAttendance) => {
     setSelectedEmployee(employee);
+    
+    // Scroll to employee stats section after short delay to allow rendering
+    setTimeout(() => {
+      const statsElement = document.getElementById('employee-stats-section');
+      if (statsElement) {
+        statsElement.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
   };
 
   // Department display names (capitalized)
