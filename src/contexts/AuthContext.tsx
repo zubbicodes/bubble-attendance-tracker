@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { toast } from '@/components/ui/use-toast';
 
 type AuthContextType = {
   isAuthenticated: boolean;
@@ -40,6 +41,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setIsAuthenticated(false);
     localStorage.removeItem('ads_authenticated');
+    
+    // Show toast message when logged out due to inactivity
+    if (isAuthenticated) {
+      toast({
+        title: "Session Expired",
+        description: "You have been logged out due to inactivity",
+      });
+    }
   };
 
   return (

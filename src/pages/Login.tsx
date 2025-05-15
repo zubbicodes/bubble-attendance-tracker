@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Timer } from 'lucide-react';
 
 const Login = () => {
   const [accessCode, setAccessCode] = useState('');
@@ -67,6 +67,10 @@ const Login = () => {
                   required
                 />
                 {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-4 pt-2 border-t">
+                <Timer className="h-4 w-4" />
+                <p>For security, you will be automatically logged out after 2 minutes of inactivity.</p>
               </div>
             </div>
           </CardContent>

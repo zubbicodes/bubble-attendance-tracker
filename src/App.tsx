@@ -9,12 +9,16 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { useActivityTimer } from "./hooks/useActivityTimer";
 
 const queryClient = new QueryClient();
 
-// Protected route component
+// Protected route component with activity timer
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useAuth();
+  
+  // Initialize activity timer for authenticated routes
+  useActivityTimer();
   
   if (!isAuthenticated) {
     return <Navigate to="/login" />;
