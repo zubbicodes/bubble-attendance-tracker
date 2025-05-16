@@ -41,14 +41,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setIsAuthenticated(false);
     localStorage.removeItem('ads_authenticated');
-    
-    // Show toast message when logged out due to inactivity
-    if (isAuthenticated) {
-      toast({
-        title: "Session Expired",
-        description: "You have been logged out due to inactivity",
-      });
-    }
   };
 
   return (

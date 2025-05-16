@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
-import { ShieldCheck, Timer } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 
 const Login = () => {
   const [accessCode, setAccessCode] = useState('');
@@ -52,26 +52,20 @@ const Login = () => {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="accessCode" className="block text-sm font-medium text-gray-700 mb-1">
-                  Access Code
-                </label>
-                <Input 
-                  id="accessCode"
-                  type="password"
-                  value={accessCode}
-                  onChange={(e) => setAccessCode(e.target.value)}
-                  className={error ? "border-red-500" : ""}
-                  placeholder="Enter access code"
-                  required
-                />
-                {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-4 pt-2 border-t">
-                <Timer className="h-4 w-4" />
-                <p>For security, you will be automatically logged out after 2 minutes of inactivity.</p>
-              </div>
+            <div>
+              <label htmlFor="accessCode" className="block text-sm font-medium text-gray-700 mb-1">
+                Access Code
+              </label>
+              <Input 
+                id="accessCode"
+                type="password"
+                value={accessCode}
+                onChange={(e) => setAccessCode(e.target.value)}
+                className={error ? "border-red-500" : ""}
+                placeholder="Enter access code"
+                required
+              />
+              {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
             </div>
           </CardContent>
           <CardFooter>
