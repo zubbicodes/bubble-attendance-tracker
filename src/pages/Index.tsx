@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import StatusFilters from '@/components/StatusFilters';
 import AttendanceTable from '@/components/AttendanceTable';
 import EmployeeStats from '@/components/EmployeeStats';
+import EmployeeStatsPanel from '@/components/EmployeeStatsPanel';
 import ExportOptions from '@/components/ExportOptions';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -29,10 +30,14 @@ const Index = () => {
               </CardContent>
             </Card>
             
+            {/* Show summary stats on main page */}
             <div className="scroll-mt-8 transition-all duration-500" id="employee-stats-section">
               <EmployeeStats />
             </div>
           </div>
+          
+          {/* Slide-in panel for detailed stats */}
+          <EmployeeStatsPanel />
         </div>
       </div>
     </AttendanceProvider>

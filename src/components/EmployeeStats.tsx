@@ -1,3 +1,4 @@
+
 import { useAttendance } from '@/contexts/AttendanceContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,11 +12,18 @@ import {
   ChartTooltipContent 
 } from '@/components/ui/chart';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown } from 'lucide-react';
 
-export default function EmployeeStats() {
+interface EmployeeStatsProps {
+  inPanel?: boolean;
+}
+
+export default function EmployeeStats({ inPanel = false }: EmployeeStatsProps) {
   const { selectedEmployee } = useAttendance();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [employeeStats, setEmployeeStats] = useState<StatsMap>({
     '7days': {
       totalPresent: 0,
@@ -141,17 +149,10 @@ export default function EmployeeStats() {
     return value.toFixed(decimals);
   };
 
-  return (
-    <Card className="w-full mt-6" id="employee-stats-section">
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center justify-between">
-          <div>{selectedEmployee.name}</div>
-          <div className="text-sm text-muted-foreground">
-            ID: {selectedEmployee.acNo} • {selectedEmployee.department}
-          </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+  // If in panel mode, render complete stats in the sheet
+  if (inPanel) {
+    return (
+      <div className="w-full">
         {isLoading ? (
           <div className="flex justify-center py-4">Loading employee history...</div>
         ) : (
@@ -165,7 +166,7 @@ export default function EmployeeStats() {
             {(['7days', '30days', 'allTime'] as Period[]).map((period) => (
               <TabsContent key={period} value={period}>
                 <div className="grid gap-6">
-                  <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <StatCard
                       title="Present Days"
                       value={employeeStats[period].totalPresent}
@@ -277,9 +278,129 @@ export default function EmployeeStats() {
             ))}
           </Tabs>
         )}
+      </div>
+    );
+  }
+
+  // If on main page, render a compact summary card that can expand
+  return (
+    <Card className="w-full mt-6" id="employee-stats-section">
+      <CardHeader className="pb-0">
+        <CardTitle className="text-lg">
+          <div className="flex items-center justify-between">
+            <div>{selectedEmployee.name}</div>
+            <div className="text-sm text-muted-foreground">
+              ID: {selectedEmployee.acNo} • {selectedEmployee.department}
+            </div>
+          </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex justify-center py-4">Loading employee summary...</div>
+        ) : (
+          <Collapsible 
+            open={isExpanded} 
+            onOpenChange={setIsExpanded}
+            className="space-y-2"
+          >
+            {/* Always visible summary */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-2">
+              <StatCard
+                title="Today's Hours"
+                value={formatSafely(selectedEmployee.totalHours)}
+                unit="hrs"
+              />
+              <StatCard
+                title="Status"
+                value={selectedEmployee.status}
+                isStatus={true}
+              />
+              <StatCard
+                title="Avg. Daily (30 days)"
+                value={formatSafely(employeeStats['30days'].averageDailyHours)}
+                unit="hrs/day"
+              />
+              <StatCard
+                title="Total Present (30 days)"
+                value={employeeStats['30days'].totalPresent}
+                unit="days"
+              />
+            </div>
+            
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center justify-center w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-1">
+                {isExpanded ? "Show less" : "Show more"} 
+                <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+              </button>
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent>
+              <div className="pt-4 border-t">
+                <div className="grid grid-cols-2 md:grid-cols-7 gap-4 mb-4">
+                  <StatCard
+                    title="Late Entries (30d)"
+                    value={employeeStats['30days'].lateEntries}
+                  />
+                  <StatCard
+                    title="Early Exits (30d)"
+                    value={employeeStats['30days'].earlyExits}
+                  />
+                  <StatCard
+                    title="Shortfall (30d)"
+                    value={formatSafely(employeeStats['30days'].shortfallHours)}
+                    unit="hrs"
+                    highlight={employeeStats['30days'].shortfallHours > 0}
+                    highlightColor="text-red-500"
+                  />
+                  <StatCard
+                    title="Overtime (30d)"
+                    value={formatSafely(employeeStats['30days'].overtimeHours)}
+                    unit="hrs"
+                    highlight={employeeStats['30days'].overtimeHours > 0}
+                    highlightColor="text-green-500"
+                  />
+                </div>
+                
+                {/* Mini chart for days present */}
+                <div className="h-32 mt-4">
+                  <h3 className="text-xs font-medium mb-2">Daily Working Hours (Last 14 Days)</h3>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={dailyHoursData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 10 }} 
+                        tickMargin={5}
+                      />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip />
+                      <Line 
+                        type="monotone" 
+                        dataKey="hours" 
+                        stroke="#2563eb" 
+                        strokeWidth={2}
+                        dot={{ r: 2 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
       </CardContent>
     </Card>
   );
+}
+
+interface StatCardProps { 
+  title: string; 
+  value: number | string; 
+  unit?: string;
+  highlight?: boolean;
+  highlightColor?: string;
+  isStatus?: boolean;
 }
 
 function StatCard({ 
@@ -287,18 +408,40 @@ function StatCard({
   value, 
   unit,
   highlight = false,
-  highlightColor = ''
-}: { 
-  title: string; 
-  value: number | string; 
-  unit?: string;
-  highlight?: boolean;
-  highlightColor?: string;
-}) {
+  highlightColor = '',
+  isStatus = false
+}: StatCardProps) {
+  // For status values, apply appropriate styling
+  if (isStatus && typeof value === 'string') {
+    const getStatusColor = (status: string) => {
+      switch(status) {
+        case 'onTime': return 'bg-green-100 text-green-800';
+        case 'lateEntry': return 'bg-yellow-100 text-yellow-800';
+        case 'earlyExit': return 'bg-orange-100 text-orange-800';
+        case 'missingCheckout': return 'bg-red-100 text-red-800';
+        case 'lessHours': return 'bg-blue-100 text-blue-800';
+        default: return 'bg-gray-100 text-gray-800';
+      }
+    };
+
+    const statusColor = getStatusColor(value);
+    
+    return (
+      <div className="bg-muted/30 p-3 rounded-lg">
+        <div className="text-sm text-muted-foreground">{title}</div>
+        <div className="mt-1">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+            {value}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-muted/30 p-3 rounded-lg">
       <div className="text-sm text-muted-foreground">{title}</div>
-      <div className={`text-xl font-semibold flex items-center gap-1 ${highlight ? highlightColor : ''}`}>
+      <div className={`text-lg font-semibold flex items-center gap-1 ${highlight ? highlightColor : ''}`}>
         {value} {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
       </div>
     </div>
