@@ -1,3 +1,4 @@
+
 import { useAttendance } from '@/contexts/AttendanceContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -22,21 +23,27 @@ export default function EmployeeStats() {
       totalWorkingHours: 0,
       averageDailyHours: 0,
       lateEntries: 0,
-      earlyExits: 0
+      earlyExits: 0,
+      shortfallHours: 0,
+      overtimeHours: 0
     },
     '30days': {
       totalPresent: 0,
       totalWorkingHours: 0,
       averageDailyHours: 0,
       lateEntries: 0,
-      earlyExits: 0
+      earlyExits: 0,
+      shortfallHours: 0,
+      overtimeHours: 0
     },
     'allTime': {
       totalPresent: 0,
       totalWorkingHours: 0,
       averageDailyHours: 0,
       lateEntries: 0,
-      earlyExits: 0
+      earlyExits: 0,
+      shortfallHours: 0,
+      overtimeHours: 0
     }
   });
   const [chartData, setChartData] = useState<any[]>([]);
@@ -153,7 +160,7 @@ export default function EmployeeStats() {
             {(['7days', '30days', 'allTime'] as Period[]).map((period) => (
               <TabsContent key={period} value={period}>
                 <div className="grid gap-6">
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
                     <StatCard
                       title="Present Days"
                       value={employeeStats[period].totalPresent}
@@ -175,6 +182,20 @@ export default function EmployeeStats() {
                     <StatCard
                       title="Early Exits"
                       value={employeeStats[period].earlyExits}
+                    />
+                    <StatCard
+                      title="Shortfall"
+                      value={employeeStats[period].shortfallHours.toFixed(1)}
+                      unit="hrs"
+                      highlight={employeeStats[period].shortfallHours > 0}
+                      highlightColor="text-red-500"
+                    />
+                    <StatCard
+                      title="Overtime"
+                      value={employeeStats[period].overtimeHours.toFixed(1)}
+                      unit="hrs"
+                      highlight={employeeStats[period].overtimeHours > 0}
+                      highlightColor="text-green-500"
                     />
                   </div>
                   
@@ -200,7 +221,7 @@ export default function EmployeeStats() {
                             }}
                           />
                           <Tooltip 
-                            formatter={(value) => [`${value} hrs`, 'Working Hours']}
+                            formatter={(value) => [`${Number(value).toFixed(2)} hrs`, 'Working Hours']}
                             labelFormatter={(label) => `Date: ${label}`}
                             contentStyle={{ 
                               backgroundColor: 'white', 
@@ -259,16 +280,20 @@ export default function EmployeeStats() {
 function StatCard({ 
   title, 
   value, 
-  unit
+  unit,
+  highlight = false,
+  highlightColor = ''
 }: { 
   title: string; 
   value: number | string; 
   unit?: string;
+  highlight?: boolean;
+  highlightColor?: string;
 }) {
   return (
     <div className="bg-muted/30 p-3 rounded-lg">
       <div className="text-sm text-muted-foreground">{title}</div>
-      <div className="text-xl font-semibold flex items-center gap-1">
+      <div className={`text-xl font-semibold flex items-center gap-1 ${highlight ? highlightColor : ''}`}>
         {value} {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
       </div>
     </div>

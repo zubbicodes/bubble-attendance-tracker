@@ -34,6 +34,8 @@ export type EmployeeStats = {
   averageDailyHours: number;
   lateEntries: number;
   earlyExits: number;
+  shortfallHours: number;  // Added shortfall hours
+  overtimeHours: number;   // Added overtime hours
 };
 
 export type Period = '7days' | '30days' | 'allTime';
