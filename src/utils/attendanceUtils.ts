@@ -164,6 +164,8 @@ export function calculateEmployeeStats(
   averageDailyHours: number;
   lateEntries: number;
   earlyExits: number;
+  shortfallHours: number;
+  overtimeHours: number;
 } {
   // Filter by date range if specified
   let filteredData = [...attendanceData];
@@ -194,12 +196,25 @@ export function calculateEmployeeStats(
     record => record.status === 'earlyExit'
   ).length;
   
+  // Calculate shortfall hours (assuming standard 8-hour workday)
+  const expectedHours = totalPresent * 8; // 8 hours per workday
+  const shortfallHours = totalWorkingHours < expectedHours 
+    ? parseFloat((expectedHours - totalWorkingHours).toFixed(2))
+    : 0;
+  
+  // Calculate overtime hours
+  const overtimeHours = totalWorkingHours > expectedHours 
+    ? parseFloat((totalWorkingHours - expectedHours).toFixed(2)) 
+    : 0;
+  
   return {
     totalPresent,
     totalWorkingHours,
     averageDailyHours,
     lateEntries,
-    earlyExits
+    earlyExits,
+    shortfallHours,
+    overtimeHours
   };
 }
 

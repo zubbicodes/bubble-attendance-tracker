@@ -1,4 +1,3 @@
-
 import { useAttendance } from '@/contexts/AttendanceContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -136,6 +135,12 @@ export default function EmployeeStats() {
     return null;
   }
 
+  // Safe formatting function to handle potentially undefined numbers
+  const formatSafely = (value: number | undefined, decimals: number = 1): string => {
+    if (value === undefined || value === null) return '0.0';
+    return value.toFixed(decimals);
+  };
+
   return (
     <Card className="w-full mt-6" id="employee-stats-section">
       <CardHeader>
@@ -167,12 +172,12 @@ export default function EmployeeStats() {
                     />
                     <StatCard
                       title="Working Hours"
-                      value={employeeStats[period].totalWorkingHours.toFixed(1)}
+                      value={formatSafely(employeeStats[period].totalWorkingHours)}
                       unit="hrs"
                     />
                     <StatCard
                       title="Avg. Daily"
-                      value={employeeStats[period].averageDailyHours.toFixed(1)}
+                      value={formatSafely(employeeStats[period].averageDailyHours)}
                       unit="hrs/day"
                     />
                     <StatCard
@@ -185,14 +190,14 @@ export default function EmployeeStats() {
                     />
                     <StatCard
                       title="Shortfall"
-                      value={employeeStats[period].shortfallHours.toFixed(1)}
+                      value={formatSafely(employeeStats[period].shortfallHours)}
                       unit="hrs"
                       highlight={employeeStats[period].shortfallHours > 0}
                       highlightColor="text-red-500"
                     />
                     <StatCard
                       title="Overtime"
-                      value={employeeStats[period].overtimeHours.toFixed(1)}
+                      value={formatSafely(employeeStats[period].overtimeHours)}
                       unit="hrs"
                       highlight={employeeStats[period].overtimeHours > 0}
                       highlightColor="text-green-500"
