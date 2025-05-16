@@ -86,19 +86,18 @@ export function calculateAttendanceStatus(
   const isNightShiftDept = expectedExitMinutes < expectedEntryMinutes;
   const isNightShiftEmployee = exitMinutes < entryMinutes;
   
-  // If entry is late
-  // Night shift: If entry time is after expected entry time and before midnight
-  // Day shift: If entry time is after expected entry time
-  if ((isNightShiftDept && entryMinutes > expectedEntryMinutes && entryMinutes < 24*60) || 
-      (!isNightShiftDept && entryMinutes > expectedEntryMinutes + 15)) { // 15-minute grace period
+  // Using 15-minute grace period for both entry and exit as specified
+  const GRACE_MINUTES = 15;
+  
+  // If entry is late - more than 15 minutes after expected entry time
+  if ((isNightShiftDept && entryMinutes > expectedEntryMinutes + GRACE_MINUTES && entryMinutes < 24*60) || 
+      (!isNightShiftDept && entryMinutes > expectedEntryMinutes + GRACE_MINUTES)) {
     return 'lateEntry';
   }
   
-  // If exit is early
-  // Night shift: If exit time is before expected exit time and after midnight
-  // Day shift: If exit time is before expected exit time
-  if ((isNightShiftDept && exitMinutes < expectedExitMinutes && exitMinutes >= 0) || 
-      (!isNightShiftDept && exitMinutes < expectedExitMinutes - 15)) { // 15-minute grace period
+  // If exit is early - more than 15 minutes before expected exit time
+  if ((isNightShiftDept && exitMinutes < expectedExitMinutes - GRACE_MINUTES && exitMinutes >= 0) || 
+      (!isNightShiftDept && exitMinutes < expectedExitMinutes - GRACE_MINUTES)) {
     return 'earlyExit';
   }
   
@@ -113,7 +112,7 @@ export function calculateAttendanceStatus(
     : exitMinutes - entryMinutes;            // Day shift
   
   // If worked less than expected hours minus 30 minutes
-  if (actualWorkMinutes < expectedWorkMinutes - 30) {
+  if (actualWorkMinutes < expectedWorkMinutes - GRACE_MINUTES * 2) { // Grace period both at entry and exit
     return 'lessHours';
   }
   
@@ -196,8 +195,14 @@ export function calculateEmployeeStats(
     record => record.status === 'earlyExit'
   ).length;
   
-  // Calculate shortfall hours (assuming standard 8-hour workday)
-  const expectedHours = totalPresent * 8; // 8 hours per workday
+  // Calculate expected hours based on department (Administration: 9 hours, Others: 12 hours)
+  const expectedHours = filteredData.reduce((sum, record) => {
+    // Standard hours based on department
+    const standardHours = record.department === 'administration' ? 9 : 12;
+    return sum + standardHours;
+  }, 0);
+  
+  // Calculate shortfall hours
   const shortfallHours = totalWorkingHours < expectedHours 
     ? parseFloat((expectedHours - totalWorkingHours).toFixed(2))
     : 0;

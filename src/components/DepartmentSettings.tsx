@@ -24,13 +24,15 @@ export default function DepartmentSettingsDialog() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
-  // Default times from the image
+  // Updated default times based on the requirement:
+  // Administration: 9 hours (9am to 6pm)
+  // All others: 12 hours (8am to 8pm)
   const defaultTimes = {
-    administration: { entry: "09:15 AM", exit: "05:45 PM" },
-    supervisor: { entry: "08:15 AM", exit: "07:45 PM" },
-    packing: { entry: "08:15 AM", exit: "07:45 PM" },
-    production: { entry: "08:15 AM", exit: "07:45 AM" },
-    others: { entry: "08:15 AM", exit: "07:45 AM" }
+    administration: { entry: "09:00 AM", exit: "06:00 PM" },
+    supervisor: { entry: "08:00 AM", exit: "08:00 PM" },
+    packing: { entry: "08:00 AM", exit: "08:00 PM" },
+    production: { entry: "08:00 AM", exit: "08:00 PM" },
+    others: { entry: "08:00 AM", exit: "08:00 PM" }
   };
   
   // Load department settings from Supabase when component mounts
@@ -178,7 +180,7 @@ export default function DepartmentSettingsDialog() {
           starttime: entry24,
           endtime: exit24,
           workinghours: workinghours,
-          graceminutes: 15 // Default grace period
+          graceminutes: 15 // 15-minute grace period as specified
         };
       });
       

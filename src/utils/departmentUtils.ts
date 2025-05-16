@@ -34,12 +34,15 @@ export const departments: DepartmentMap = {
   others: [] // Default department
 };
 
+// Update default settings to reflect the correct working hours:
+// Administration: 9 hours (9am to 6pm)
+// All others: 12 hours (8am to 8pm)
 export const defaultDepartmentSettings = {
-  administration: { entry: "09:00", exit: "17:00" },
-  supervisor: { entry: "08:00", exit: "16:00" },
-  packing: { entry: "08:30", exit: "16:30" },
-  production: { entry: "07:00", exit: "15:00" },
-  others: { entry: "09:00", exit: "17:00" }
+  administration: { entry: "09:00 AM", exit: "06:00 PM" },
+  supervisor: { entry: "08:00 AM", exit: "08:00 PM" },
+  packing: { entry: "08:00 AM", exit: "08:00 PM" },
+  production: { entry: "08:00 AM", exit: "08:00 PM" },
+  others: { entry: "08:00 AM", exit: "08:00 PM" }
 };
 
 export function getDepartmentForEmployee(name: string): Department {
