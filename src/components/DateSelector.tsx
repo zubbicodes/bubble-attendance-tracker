@@ -4,17 +4,29 @@ import { useAttendance } from '@/contexts/AttendanceContext';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { loadAttendanceByDate } from '@/utils/attendanceUtils';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog";
+import { supabase } from '@/integrations/supabase/client';
 
 export default function DateSelector() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { date, setDate, setAttendanceRecords, setIsLoading: setAppLoading } = useAttendance();
   const { toast } = useToast();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const handleDateChange = (selectedDate: Date | undefined) => {
     if (!selectedDate) return;
@@ -60,6 +72,44 @@ export default function DateSelector() {
     }
   };
 
+  const deleteDataForDate = async () => {
+    if (!date) return;
+    
+    setIsLoading(true);
+    setAppLoading(true);
+    
+    try {
+      console.log('Deleting data for date:', date);
+      
+      const { error, count } = await supabase
+        .from('daily_attendance')
+        .delete({ count: 'exact' })
+        .eq('date', date);
+        
+      if (error) {
+        throw error;
+      }
+      
+      setAttendanceRecords([]); // Clear the records from the UI
+      
+      toast({
+        title: "Data deleted",
+        description: `Successfully deleted ${count || 0} attendance records for ${date}`,
+      });
+    } catch (error) {
+      console.error('Error deleting data:', error);
+      toast({
+        title: "Error deleting data",
+        description: "Failed to delete attendance records from database",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+      setAppLoading(false);
+      setDeleteDialogOpen(false);
+    }
+  };
+
   return (
     <div className="flex items-center gap-2">
       <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -89,11 +139,47 @@ export default function DateSelector() {
       <Button 
         variant="outline"
         size="sm"
-        disabled={isLoading} 
+        disabled={isLoading || !date} 
         onClick={() => date && loadDataForDate(date)}
       >
         {isLoading ? 'Loading...' : 'Load Data'}
       </Button>
+      
+      <Button 
+        variant="outline"
+        size="sm"
+        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+        disabled={isLoading || !date} 
+        onClick={() => setDeleteDialogOpen(true)}
+      >
+        <Trash2 className="h-4 w-4" />
+        <span className="sr-only">Delete</span>
+      </Button>
+      
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Attendance Data</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete all attendance records for {date}? 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault();
+                deleteDataForDate();
+              }}
+              disabled={isLoading}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isLoading ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
