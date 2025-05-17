@@ -1,4 +1,3 @@
-
 import { AttendanceStatus, EmployeeAttendance, Department, DepartmentSettings } from '@/types';
 import { defaultDepartmentSettings } from './departmentUtils';
 import { supabase } from '@/integrations/supabase/client';
@@ -63,13 +62,7 @@ export function calculateAttendanceStatus(
   attendance: EmployeeAttendance, 
   settings: DepartmentSettings = defaultDepartmentSettings
 ): AttendanceStatus {
-  const { entryTime, exitTime, department } = attendance;
-  const deptSettings = settings[department];
-  
-  if (!deptSettings) {
-    console.error(`No settings found for department: ${department}`);
-    return 'missingCheckout';
-  }
+  const { entryTime, exitTime, department, name } = attendance;
   
   // If no entry time, it's a missing checkout
   if (!entryTime) return 'missingCheckout';
@@ -77,10 +70,13 @@ export function calculateAttendanceStatus(
   // If no exit time, it's a missing checkout
   if (!exitTime) return 'missingCheckout';
   
+  // Get expected times based on employee name and department
+  const expectedTimes = getExpectedTimes(name, department);
+  
   const entryMinutes = timeToMinutes(entryTime);
   const exitMinutes = timeToMinutes(exitTime);
-  const expectedEntryMinutes = timeToMinutes(deptSettings.entry);
-  const expectedExitMinutes = timeToMinutes(deptSettings.exit);
+  const expectedEntryMinutes = timeToMinutes(expectedTimes.entry);
+  const expectedExitMinutes = timeToMinutes(expectedTimes.exit);
   
   // Handle night shift detection for department settings
   const isNightShiftDept = expectedExitMinutes < expectedEntryMinutes;
@@ -111,7 +107,7 @@ export function calculateAttendanceStatus(
     ? (24 * 60 - entryMinutes) + exitMinutes // Night shift
     : exitMinutes - entryMinutes;            // Day shift
   
-  // If worked less than expected hours minus 30 minutes
+  // If worked less than expected hours minus grace period
   if (actualWorkMinutes < expectedWorkMinutes - GRACE_MINUTES * 2) { // Grace period both at entry and exit
     return 'lessHours';
   }
@@ -195,10 +191,10 @@ export function calculateEmployeeStats(
     record => record.status === 'earlyExit'
   ).length;
   
-  // Calculate expected hours based on department (Administration: 9 hours, Others: 12 hours)
+  // Calculate expected hours based on department and gender
   const expectedHours = filteredData.reduce((sum, record) => {
-    // Standard hours based on department
-    const standardHours = record.department === 'administration' ? 9 : 12;
+    // Get standard hours based on department and gender
+    const standardHours = getExpectedWorkHours(record.name, record.department);
     return sum + standardHours;
   }, 0);
   

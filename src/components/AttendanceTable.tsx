@@ -1,9 +1,11 @@
+
 import React, { useState, useMemo } from 'react';
 import { EmployeeAttendance, AttendanceStatus, Department } from '@/types';
 import { useAttendance } from '@/contexts/AttendanceContext';
 import { getStatusIcon, getStatusColor } from '@/utils/attendanceUtils';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { isFemaleStaff } from '@/utils/departmentUtils';
 
 export default function AttendanceTable() {
   const { attendanceRecords, selectedStatus, setSelectedEmployee } = useAttendance();
@@ -145,7 +147,12 @@ export default function AttendanceTable() {
                           onClick={() => handleRowClick(record)}
                         >
                           <td className="px-4 py-2 text-sm">{index + 1}</td>
-                          <td className="px-4 py-2 text-sm font-medium">{record.name}</td>
+                          <td className="px-4 py-2 text-sm font-medium">
+                            {record.name}
+                            {isFemaleStaff(record.name) && (
+                              <span className="ml-1 text-xs font-semibold text-pink-500 bg-pink-50 rounded-full px-1.5">F</span>
+                            )}
+                          </td>
                           <td className="px-4 py-2 text-sm">{record.entryTime || '-'}</td>
                           <td className="px-4 py-2 text-sm">{record.exitTime || '-'}</td>
                           <td className="px-4 py-2 text-sm">{record.totalHours.toFixed(1)}</td>
