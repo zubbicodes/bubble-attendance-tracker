@@ -1,3 +1,4 @@
+
 import { Department, DepartmentMap } from '@/types';
 
 export const departments: DepartmentMap = {
@@ -18,8 +19,7 @@ export const departments: DepartmentMap = {
     'iqra bibi',
     'nadia bibi',
     'rukhsana kausar',
-    'maryam bibi',
-    'mariyam bibi',
+    'Mariyam',
     'bilal ali',
     'mujahid ali',
     'asif ali',
@@ -37,8 +37,7 @@ export const departments: DepartmentMap = {
 
 // Define female staff members for special working hours
 export const femaleStaff = [
-  'mariyam bibi',
-  'maryam bibi',
+  'Mariyam',
   'rukhsana kausar',
   'iqra bibi'
 ];
