@@ -1,7 +1,6 @@
 import { AttendanceStatus, EmployeeAttendance, Department, DepartmentSettings } from '@/types';
-import { defaultDepartmentSettings } from './departmentUtils';
+import { defaultDepartmentSettings, getDepartmentForEmployee, getExpectedWorkHours, getExpectedTimes } from './departmentUtils';
 import { supabase } from '@/integrations/supabase/client';
-import { getDepartmentForEmployee } from './departmentUtils';
 
 // Function to parse time string to minutes since midnight
 export function timeToMinutes(time: string): number {
