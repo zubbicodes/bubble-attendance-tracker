@@ -1,4 +1,3 @@
-
 import { useAttendance } from '@/contexts/AttendanceContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -206,7 +205,7 @@ export default function EmployeeStats({ inPanel = false }: EmployeeStatsProps) {
                   </div>
                   
                   {/* Daily Working Hours Line Chart */}
-                  <div className="mt-4">
+                  <div className="mt-4 employee-stats-line-chart">
                     <h3 className="text-sm font-medium mb-3">Daily Working Hours Trend</h3>
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
@@ -250,7 +249,7 @@ export default function EmployeeStats({ inPanel = false }: EmployeeStatsProps) {
                   </div>
                   
                   {/* Attendance Status Chart */}
-                  <div className="mt-4">
+                  <div className="mt-4 employee-stats-bar-chart">
                     <h3 className="text-sm font-medium mb-3">Attendance Status Distribution</h3>
                     <div className="h-64">
                       <ChartContainer config={{}} className="h-full">
