@@ -1,15 +1,58 @@
-
 import React, { useState, useMemo } from 'react';
 import { EmployeeAttendance, AttendanceStatus, Department } from '@/types';
 import { useAttendance } from '@/contexts/AttendanceContext';
-import { getStatusIcon, getStatusColor } from '@/utils/attendanceUtils';
+import { getStatusIcon, getStatusColor, calculateTotalHours, calculateAttendanceStatus } from '@/utils/attendanceUtils';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { isFemaleStaff } from '@/utils/departmentUtils';
+import { Button } from '@/components/ui/button';
+import { Check, X, Edit2, ChevronDown } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+
+// Helper function to format time for input
+const formatTimeForInput = (time: string | null): string => {
+  if (!time) return '';
+  
+  // Handle AM/PM format
+  if (time.includes('AM') || time.includes('PM')) {
+    const [timePart, period] = time.split(' ');
+    let [hours, minutes] = timePart.split(':').map(Number);
+    
+    // Convert to 24-hour format
+    if (period === 'PM' && hours < 12) {
+      hours += 12;
+    }
+    if (period === 'AM' && hours === 12) {
+      hours = 0;
+    }
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  }
+  
+  // Handle 24-hour format
+  return time;
+};
+
+// Helper function to format time for display
+const formatTimeForDisplay = (time: string): string => {
+  if (!time) return '';
+  
+  const [hours, minutes] = time.split(':').map(Number);
+  
+  // Convert to 12-hour format
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12;
+  
+  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+};
 
 export default function AttendanceTable() {
-  const { attendanceRecords, selectedStatus, setSelectedEmployee } = useAttendance();
+  const { attendanceRecords, selectedStatus, setSelectedEmployee, setAttendanceRecords } = useAttendance();
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingRow, setEditingRow] = useState<string | null>(null);
+  const [editedData, setEditedData] = useState<EmployeeAttendance | null>(null);
+  const { toast } = useToast();
   const [sortConfig, setSortConfig] = useState<{ key: keyof EmployeeAttendance; direction: 'asc' | 'desc' }>({
     key: 'name',
     direction: 'asc'
@@ -77,6 +120,92 @@ export default function AttendanceTable() {
   // Department display order
   const departmentOrder: Department[] = ['administration', 'supervisor', 'packing', 'production', 'others'];
 
+  const handleEdit = (record: EmployeeAttendance) => {
+    setEditingRow(record.id);
+    setEditedData({
+      ...record,
+      entryTime: formatTimeForInput(record.entryTime),
+      exitTime: formatTimeForInput(record.exitTime)
+    });
+  };
+
+  const handleCancel = () => {
+    setEditingRow(null);
+    setEditedData(null);
+  };
+
+  const handleSave = async (record: EmployeeAttendance) => {
+    if (!editedData) return;
+
+    try {
+      const entryTimeDisplay = formatTimeForDisplay(editedData.entryTime || '');
+      const exitTimeDisplay = formatTimeForDisplay(editedData.exitTime || '');
+      
+      // Update the database
+      const { error } = await supabase
+        .from('daily_attendance')
+        .update({
+          in_time: entryTimeDisplay,
+          out_time: exitTimeDisplay,
+          total_minutes: Math.round(editedData.totalHours * 60),
+          status: [editedData.status],
+          working_hours: `${editedData.totalHours.toFixed(1)}h`,
+        })
+        .eq('id', record.id);
+
+      if (error) throw error;
+
+      // Update local state with formatted times
+      const updatedRecord = {
+        ...editedData,
+        entryTime: entryTimeDisplay,
+        exitTime: exitTimeDisplay
+      };
+
+      setAttendanceRecords(prevRecords =>
+        prevRecords.map(r => (r.id === record.id ? updatedRecord : r))
+      );
+
+      setEditingRow(null);
+      setEditedData(null);
+
+      toast({
+        title: "Success",
+        description: "Attendance record updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating record:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update attendance record.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleInputChange = (field: keyof EmployeeAttendance, value: string) => {
+    if (!editedData) return;
+
+    const updatedData = { ...editedData };
+    
+    if (field === 'entryTime' || field === 'exitTime') {
+      updatedData[field] = value;
+      // Recalculate total hours and status
+      if (updatedData.entryTime && updatedData.exitTime) {
+        const entryTimeDisplay = formatTimeForDisplay(updatedData.entryTime);
+        const exitTimeDisplay = formatTimeForDisplay(updatedData.exitTime);
+        updatedData.totalHours = calculateTotalHours(entryTimeDisplay, exitTimeDisplay);
+        updatedData.status = calculateAttendanceStatus({
+          ...updatedData,
+          entryTime: entryTimeDisplay,
+          exitTime: exitTimeDisplay
+        });
+      }
+    }
+
+    setEditedData(updatedData);
+  };
+
   return (
     <div className="w-full">
       <div className="mb-4">
@@ -91,60 +220,33 @@ export default function AttendanceTable() {
         </div>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-4">
         {departmentOrder.map(dept => {
           const employees = recordsByDepartment[dept];
           if (employees.length === 0) return null;
-          
+
           return (
-            <Card key={dept} className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="bg-muted/30 p-3 border-b font-medium">
-                  {departmentDisplayNames[dept]} ({employees.length})
-                </div>
+            <Card key={dept}>
+              <CardContent className="pt-6">
+                <h3 className="text-lg font-semibold mb-4">{departmentDisplayNames[dept]}</h3>
                 <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Sr.</th>
-                        <th 
-                          className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-muted/80"
-                          onClick={() => handleSort('name')}
-                        >
-                          Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                        </th>
-                        <th 
-                          className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-muted/80"
-                          onClick={() => handleSort('entryTime')}
-                        >
-                          Entry {sortConfig.key === 'entryTime' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                        </th>
-                        <th 
-                          className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-muted/80"
-                          onClick={() => handleSort('exitTime')}
-                        >
-                          Exit {sortConfig.key === 'exitTime' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                        </th>
-                        <th 
-                          className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-muted/80"
-                          onClick={() => handleSort('totalHours')}
-                        >
-                          Hours {sortConfig.key === 'totalHours' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                        </th>
-                        <th 
-                          className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-muted/80"
-                          onClick={() => handleSort('status')}
-                        >
-                          Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                        </th>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="px-4 py-2 text-left text-sm font-medium text-muted-foreground">#</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-muted-foreground">Name</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-muted-foreground">Entry Time</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-muted-foreground">Exit Time</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-muted-foreground">Total Hours</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-muted-foreground">Status</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-muted-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
                       {employees.map((record, index) => (
                         <tr 
                           key={record.id} 
-                          className="hover:bg-muted/30 cursor-pointer transition-colors"
-                          onClick={() => handleRowClick(record)}
+                          className="hover:bg-muted/30 transition-colors"
                         >
                           <td className="px-4 py-2 text-sm">{index + 1}</td>
                           <td className="px-4 py-2 text-sm font-medium">
@@ -153,13 +255,79 @@ export default function AttendanceTable() {
                               <span className="ml-1 text-xs font-semibold text-pink-500 bg-pink-50 rounded-full px-1.5">F</span>
                             )}
                           </td>
-                          <td className="px-4 py-2 text-sm">{record.entryTime || '-'}</td>
-                          <td className="px-4 py-2 text-sm">{record.exitTime || '-'}</td>
-                          <td className="px-4 py-2 text-sm">{record.totalHours.toFixed(1)}</td>
                           <td className="px-4 py-2 text-sm">
-                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full ${getStatusColor(record.status)} text-xs`}>
-                              {getStatusIcon(record.status)} {record.status}
+                            {editingRow === record.id ? (
+                              <Input
+                                type="time"
+                                value={editedData?.entryTime || ''}
+                                onChange={(e) => handleInputChange('entryTime', e.target.value)}
+                                className="w-32"
+                              />
+                            ) : (
+                              record.entryTime || '-'
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-sm">
+                            {editingRow === record.id ? (
+                              <Input
+                                type="time"
+                                value={editedData?.exitTime || ''}
+                                onChange={(e) => handleInputChange('exitTime', e.target.value)}
+                                className="w-32"
+                              />
+                            ) : (
+                              record.exitTime || '-'
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-sm">
+                            {editingRow === record.id ? editedData?.totalHours.toFixed(1) : record.totalHours.toFixed(1)}
+                          </td>
+                          <td className="px-4 py-2 text-sm">
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full ${getStatusColor(editingRow === record.id ? editedData?.status || record.status : record.status)} text-xs`}>
+                              {getStatusIcon(editingRow === record.id ? editedData?.status || record.status : record.status)} 
+                              {editingRow === record.id ? editedData?.status || record.status : record.status}
                             </span>
+                          </td>
+                          <td className="px-4 py-2 text-sm">
+                            {editingRow === record.id ? (
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleSave(record)}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={handleCancel}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEdit(record)}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRowClick(record)}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <ChevronDown className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}

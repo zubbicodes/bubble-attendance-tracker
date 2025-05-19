@@ -1,4 +1,3 @@
-
 export type Department = 'administration' | 'supervisor' | 'packing' | 'production' | 'others';
 
 export type DepartmentSettings = {
@@ -8,7 +7,7 @@ export type DepartmentSettings = {
   };
 };
 
-export type AttendanceStatus = 'onTime' | 'lateEntry' | 'earlyExit' | 'missingCheckout' | 'lessHours';
+export type AttendanceStatus = 'onTime' | 'lateEntry' | 'earlyExit' | 'missingCheckout' | 'lessHours' | 'overtime';
 
 export interface EmployeeAttendance {
   id: string;
@@ -36,6 +35,14 @@ export type EmployeeStats = {
   earlyExits: number;
   shortfallHours: number;  // Added shortfall hours
   overtimeHours: number;   // Added overtime hours
+  sundayOvertimeHours: number;
+  regularOvertimeHours: number;
+  sundaysWorked: number;
+  longestOvertimeDay: { date: string; hours: number } | null;
+  perfectAttendanceDays: number;
+  mostFrequentStatus: string;
+  firstAttendanceDate: string | null;
+  lastAttendanceDate: string | null;
 };
 
 export type Period = '7days' | '30days' | 'allTime';

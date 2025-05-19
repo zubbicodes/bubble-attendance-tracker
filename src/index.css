@@ -99,3 +99,7 @@
     @apply bg-background text-foreground;
   }
 }
+
+.bg-status-overtime {
+  @apply bg-purple-100 text-purple-700;
+}

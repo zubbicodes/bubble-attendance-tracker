@@ -2,7 +2,7 @@ import { useAttendance } from '@/contexts/AttendanceContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Period, StatsMap } from '@/types';
-import { calculateEmployeeStats, loadEmployeeHistory } from '@/utils/attendanceUtils';
+import { calculateEmployeeStats, loadEmployeeHistory, getFirstDayOfMonth } from '@/utils/attendanceUtils';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { 
@@ -31,7 +31,15 @@ export default function EmployeeStats({ inPanel = false }: EmployeeStatsProps) {
       lateEntries: 0,
       earlyExits: 0,
       shortfallHours: 0,
-      overtimeHours: 0
+      overtimeHours: 0,
+      sundayOvertimeHours: 0,
+      regularOvertimeHours: 0,
+      sundaysWorked: 0,
+      longestOvertimeDay: null,
+      perfectAttendanceDays: 0,
+      mostFrequentStatus: '',
+      firstAttendanceDate: null,
+      lastAttendanceDate: null,
     },
     '30days': {
       totalPresent: 0,
@@ -40,7 +48,15 @@ export default function EmployeeStats({ inPanel = false }: EmployeeStatsProps) {
       lateEntries: 0,
       earlyExits: 0,
       shortfallHours: 0,
-      overtimeHours: 0
+      overtimeHours: 0,
+      sundayOvertimeHours: 0,
+      regularOvertimeHours: 0,
+      sundaysWorked: 0,
+      longestOvertimeDay: null,
+      perfectAttendanceDays: 0,
+      mostFrequentStatus: '',
+      firstAttendanceDate: null,
+      lastAttendanceDate: null,
     },
     'allTime': {
       totalPresent: 0,
@@ -49,7 +65,15 @@ export default function EmployeeStats({ inPanel = false }: EmployeeStatsProps) {
       lateEntries: 0,
       earlyExits: 0,
       shortfallHours: 0,
-      overtimeHours: 0
+      overtimeHours: 0,
+      sundayOvertimeHours: 0,
+      regularOvertimeHours: 0,
+      sundaysWorked: 0,
+      longestOvertimeDay: null,
+      perfectAttendanceDays: 0,
+      mostFrequentStatus: '',
+      firstAttendanceDate: null,
+      lastAttendanceDate: null,
     }
   });
   const [chartData, setChartData] = useState<any[]>([]);
@@ -67,7 +91,7 @@ export default function EmployeeStats({ inPanel = false }: EmployeeStatsProps) {
         // Calculate stats for each period
         const stats = {
           '7days': calculateEmployeeStats(allRecords, 7),
-          '30days': calculateEmployeeStats(allRecords, 30),
+          '30days': calculateEmployeeStats(allRecords, null, getFirstDayOfMonth()),
           'allTime': calculateEmployeeStats(allRecords)
         };
         
@@ -118,7 +142,7 @@ export default function EmployeeStats({ inPanel = false }: EmployeeStatsProps) {
             month: 'short', 
             day: 'numeric' 
           }),
-          hours: record.totalHours,
+          hours: record.status === 'missingCheckout' ? 0 : record.totalHours,
           status: record.status
         }));
         
@@ -148,6 +172,16 @@ export default function EmployeeStats({ inPanel = false }: EmployeeStatsProps) {
     return value.toFixed(decimals);
   };
 
+  // Add this helper for status label
+  const statusLabels: Record<string, string> = {
+    onTime: 'On Time',
+    lateEntry: 'Late Entry',
+    earlyExit: 'Early Exit',
+    missingCheckout: 'Missing Checkout',
+    lessHours: 'Less Working Hours',
+    overtime: 'Overtime',
+  };
+
   // If in panel mode, render complete stats in the sheet
   if (inPanel) {
     return (
@@ -158,7 +192,7 @@ export default function EmployeeStats({ inPanel = false }: EmployeeStatsProps) {
           <Tabs defaultValue="7days">
             <TabsList className="mb-4">
               <TabsTrigger value="7days">Last 7 Days</TabsTrigger>
-              <TabsTrigger value="30days">Last 30 Days</TabsTrigger>
+              <TabsTrigger value="30days">This Month</TabsTrigger>
               <TabsTrigger value="allTime">All Time</TabsTrigger>
             </TabsList>
 
@@ -203,6 +237,23 @@ export default function EmployeeStats({ inPanel = false }: EmployeeStatsProps) {
                       highlightColor="text-green-500"
                     />
                   </div>
+
+                  {/* Detailed Overtime & Attendance Stats */}
+                  {employeeStats[period].overtimeHours > 0 && (
+                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-muted/30 p-4 rounded-lg">
+                        <div className="font-semibold mb-2">Overtime Details</div>
+                        <div className="flex flex-col gap-1 text-sm">
+                          <span>Total Overtime: <b>{formatSafely(employeeStats[period].overtimeHours)}</b> hrs</span>
+                          <span>Sunday Overtime: <b>{formatSafely(employeeStats[period].sundayOvertimeHours)}</b> hrs ({employeeStats[period].sundaysWorked} Sundays)</span>
+                          <span>Regular Overtime: <b>{formatSafely(employeeStats[period].regularOvertimeHours)}</b> hrs</span>
+                          {employeeStats[period].longestOvertimeDay && (
+                            <span>Longest Overtime Day: <b>{employeeStats[period].longestOvertimeDay.date}</b> ({employeeStats[period].longestOvertimeDay.hours} hrs)</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Daily Working Hours Line Chart */}
                   <div className="mt-4 employee-stats-line-chart">

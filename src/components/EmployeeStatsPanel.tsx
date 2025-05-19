@@ -1,4 +1,3 @@
-
 import { useAttendance } from '@/contexts/AttendanceContext';
 import {
   Sheet,
@@ -11,7 +10,7 @@ import EmployeeStats from './EmployeeStats';
 import { getExpectedWorkHours, isFemaleStaff } from '@/utils/departmentUtils';
 import { Button } from '@/components/ui/button';
 import { downloadExcel } from '@/utils/exportUtils';
-import { FileExcel } from 'lucide-react';
+import { FileSpreadsheet } from 'lucide-react';
 
 export default function EmployeeStatsPanel() {
   const { selectedEmployee, setSelectedEmployee } = useAttendance();
@@ -61,7 +60,7 @@ export default function EmployeeStatsPanel() {
               className="gap-2"
               onClick={handleExport}
             >
-              <FileExcel className="h-4 w-4" />
+              <FileSpreadsheet className="h-4 w-4" />
               Export Stats
             </Button>
           )}
