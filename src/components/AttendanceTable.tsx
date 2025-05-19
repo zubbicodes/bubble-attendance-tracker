@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { isFemaleStaff } from '@/utils/departmentUtils';
 import { Button } from '@/components/ui/button';
-import { Check, X, Edit2, ChevronDown } from 'lucide-react';
+import { Check, X, Edit2, BarChart2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -324,7 +324,7 @@ export default function AttendanceTable() {
                                   onClick={() => handleRowClick(record)}
                                   className="h-8 w-8 p-0"
                                 >
-                                  <ChevronDown className="h-4 w-4" />
+                                  <BarChart2 className="h-4 w-4" />
                                 </Button>
                               </div>
                             )}
