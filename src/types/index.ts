@@ -1,5 +1,30 @@
 export type Department = 'administration' | 'supervisor' | 'packing' | 'production' | 'others';
 
+export type ProductionSubDepartment = 'crochet' | 'needle' | 'cord';
+
+export type EmployeeCategory = 'master' | 'operator';
+
+export interface DepartmentStructure {
+  administration: string[];
+  supervisor: string[];
+  packing: string[];
+  production: {
+    crochet: {
+      master: string[];
+      operator: string[];
+    };
+    needle: {
+      master: string[];
+      operator: string[];
+    };
+    cord: {
+      master: string[];
+      operator: string[];
+    };
+  };
+  others: string[];
+}
+
 export type DepartmentSettings = {
   [key in Department]: {
     entry: string;

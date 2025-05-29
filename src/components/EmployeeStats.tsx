@@ -12,7 +12,9 @@ import {
 } from '@/components/ui/chart';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, FileSpreadsheet } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { downloadExcel } from '@/utils/exportUtils';
 
 interface EmployeeStatsProps {
   inPanel?: boolean;
@@ -23,6 +25,7 @@ export default function EmployeeStats({ inPanel = false }: EmployeeStatsProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [employeeStats, setEmployeeStats] = useState<StatsMap>({
     '7days': {
       totalPresent: 0,
@@ -162,6 +165,28 @@ export default function EmployeeStats({ inPanel = false }: EmployeeStatsProps) {
     fetchEmployeeHistory();
   }, [selectedEmployee, toast]);
 
+  const handleExport = async () => {
+    if (!selectedEmployee) return;
+    
+    setIsExporting(true);
+    try {
+      await downloadExcel(selectedEmployee);
+      toast({
+        title: "Export Successful",
+        description: "Employee stats have been exported to Excel",
+      });
+    } catch (error) {
+      console.error('Error exporting employee stats:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export employee stats",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (!selectedEmployee) {
     return null;
   }
@@ -190,11 +215,22 @@ export default function EmployeeStats({ inPanel = false }: EmployeeStatsProps) {
           <div className="flex justify-center py-4">Loading employee history...</div>
         ) : (
           <Tabs defaultValue="7days">
-            <TabsList className="mb-4">
-              <TabsTrigger value="7days">Last 7 Days</TabsTrigger>
-              <TabsTrigger value="30days">This Month</TabsTrigger>
-              <TabsTrigger value="allTime">All Time</TabsTrigger>
-            </TabsList>
+            <div className="flex justify-between items-center mb-4">
+              <TabsList>
+                <TabsTrigger value="7days">Last 7 Days</TabsTrigger>
+                <TabsTrigger value="30days">This Month</TabsTrigger>
+                <TabsTrigger value="allTime">All Time</TabsTrigger>
+              </TabsList>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleExport}
+                disabled={isExporting}
+              >
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                {isExporting ? 'Exporting...' : 'Export to Excel'}
+              </Button>
+            </div>
 
             {(['7days', '30days', 'allTime'] as Period[]).map((period) => (
               <TabsContent key={period} value={period}>

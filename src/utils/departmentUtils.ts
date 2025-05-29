@@ -1,7 +1,7 @@
+import { Department, DepartmentStructure, ProductionSubDepartment, EmployeeCategory } from '@/types';
 
-import { Department, DepartmentMap } from '@/types';
-
-export const departments: DepartmentMap = {
+// Department structure with sub-departments and categories
+export const departmentStructure: DepartmentStructure = {
   administration: [
     'asim ali sabri',
     'mian abdullah',
@@ -13,25 +13,50 @@ export const departments: DepartmentMap = {
   ],
   supervisor: [
     'shafqat',
-    'master mohsin'
+   
   ],
   packing: [
     'iqra bibi',
     'nadia bibi',
     'rukhsana kausar',
     'Mariyam',
-    'bilal ali',
     'mujahid ali',
     'asif ali',
     'muhammad usman',
     'sufyan ali',
     'mureed abbas'
   ],
-  production: [
-    'irfanneedle',
-    'noor ali',
-    'deedar ali'
-  ],
+  production: {
+    crochet: {
+      master: [
+         'master mohsin',
+         'sajid ali',
+      ],
+      operator: [
+        'noor ali',
+        'shahzaib shah',
+        'sohaib shah',
+        
+      ]
+    },
+    needle: {
+      master: [
+        'deedar ali',
+      ],
+      operator: [
+        'irfan khokhar',
+        'bilal ali',
+      ]
+    },
+    cord: {
+      master: [
+        'tanveer maseeh',
+      ],
+      operator: [
+        'zain ali'
+      ]
+    }
+  },
   others: [] // Default department
 };
 
@@ -54,22 +79,66 @@ export const defaultDepartmentSettings = {
   others: { entry: "08:00 AM", exit: "08:00 PM" }
 };
 
+// Helper function to get department for an employee
 export function getDepartmentForEmployee(name: string): Department {
-  name = name.toLowerCase().trim();
+  const normalizedName = name.toLowerCase();
   
-  for (const [dept, employees] of Object.entries(departments)) {
-    if (employees.some(employee => name.includes(employee.toLowerCase()))) {
+  // Check main departments first
+  for (const [dept, employees] of Object.entries(departmentStructure)) {
+    if (dept !== 'production' && employees.some(emp => emp.toLowerCase() === normalizedName)) {
       return dept as Department;
+    }
+  }
+  
+  // Check production sub-departments
+  if (departmentStructure.production) {
+    for (const subDept of Object.values(departmentStructure.production)) {
+      if (subDept.master.some(emp => emp.toLowerCase() === normalizedName) || 
+          subDept.operator.some(emp => emp.toLowerCase() === normalizedName)) {
+        return 'production';
+      }
     }
   }
   
   return 'others';
 }
 
-// Function to check if an employee is female staff
+// Helper function to get sub-department and category for production employees
+export function getProductionDetails(name: string): { subDepartment: ProductionSubDepartment | null; category: EmployeeCategory | null } {
+  const normalizedName = name.toLowerCase();
+  
+  if (departmentStructure.production) {
+    for (const [subDept, categories] of Object.entries(departmentStructure.production)) {
+      if (categories.master.some(emp => emp.toLowerCase() === normalizedName)) {
+        return { subDepartment: subDept as ProductionSubDepartment, category: 'master' };
+      }
+      if (categories.operator.some(emp => emp.toLowerCase() === normalizedName)) {
+        return { subDepartment: subDept as ProductionSubDepartment, category: 'operator' };
+      }
+    }
+  }
+  
+  return { subDepartment: null, category: null };
+}
+
+// Helper function to check if employee is female staff
 export function isFemaleStaff(name: string): boolean {
-  name = name.toLowerCase().trim();
-  return femaleStaff.some(staff => name.includes(staff.toLowerCase()));
+  return femaleStaff.some(emp => emp.toLowerCase() === name.toLowerCase());
+}
+
+// Helper function to get display name for sub-department
+export function getSubDepartmentDisplayName(subDept: ProductionSubDepartment): string {
+  const displayNames: Record<ProductionSubDepartment, string> = {
+    crochet: 'Crochet Machines',
+    needle: 'Needle Machines',
+    cord: 'Cord Machines'
+  };
+  return displayNames[subDept] || subDept;
+}
+
+// Helper function to get display name for category
+export function getCategoryDisplayName(category: EmployeeCategory): string {
+  return category.charAt(0).toUpperCase() + category.slice(1);
 }
 
 // Get expected working hours for an employee based on department and gender

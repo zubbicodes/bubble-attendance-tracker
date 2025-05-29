@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { EmployeeAttendance, AttendanceStatus, Department } from '@/types';
+import { EmployeeAttendance, AttendanceStatus, Department, ProductionSubDepartment, EmployeeCategory } from '@/types';
 import { useAttendance } from '@/contexts/AttendanceContext';
 import { getStatusIcon, getStatusColor, calculateTotalHours, calculateAttendanceStatus } from '@/utils/attendanceUtils';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { isFemaleStaff } from '@/utils/departmentUtils';
+import { isFemaleStaff, getProductionDetails, getSubDepartmentDisplayName, getCategoryDisplayName } from '@/utils/departmentUtils';
 import { Button } from '@/components/ui/button';
-import { Check, X, Edit2, BarChart2 } from 'lucide-react';
+import { Check, X, Edit2, BarChart2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -58,6 +58,22 @@ export default function AttendanceTable() {
     direction: 'asc'
   });
 
+  // Department display names (capitalized)
+  const departmentDisplayNames: Record<Department, string> = {
+    'administration': 'Administration',
+    'supervisor': 'Supervisor',
+    'packing': 'Packing',
+    'production': 'Production',
+    'others': 'Others'
+  };
+
+  // Department display order
+  const departmentOrder: Department[] = ['administration', 'supervisor', 'packing', 'production', 'others'];
+
+  // Production sub-department order
+  const productionSubDeptOrder: ProductionSubDepartment[] = ['crochet', 'needle', 'cord'];
+  const categoryOrder: EmployeeCategory[] = ['master', 'operator'];
+
   // Filter records based on selected status and search query
   const filteredRecords = attendanceRecords.filter(record => {
     const matchesStatus = selectedStatus ? record.status === selectedStatus : true;
@@ -80,18 +96,31 @@ export default function AttendanceTable() {
     return 0;
   });
 
-  // Group records by department
+  // Group records by department and sub-department
   const recordsByDepartment = useMemo(() => {
-    const departments: Record<Department, EmployeeAttendance[]> = {
+    const departments: Record<Department, any> = {
       'administration': [],
       'supervisor': [],
       'packing': [],
-      'production': [],
+      'production': {
+        crochet: { master: [], operator: [] },
+        needle: { master: [], operator: [] },
+        cord: { master: [], operator: [] }
+      },
       'others': []
     };
     
     sortedRecords.forEach(record => {
-      departments[record.department].push(record);
+      if (record.department === 'production') {
+        const { subDepartment, category } = getProductionDetails(record.name);
+        if (subDepartment && category) {
+          departments.production[subDepartment][category].push(record);
+        } else {
+          departments.others.push(record);
+        }
+      } else {
+        departments[record.department].push(record);
+      }
     });
     
     return departments;
@@ -107,18 +136,6 @@ export default function AttendanceTable() {
   const handleRowClick = (employee: EmployeeAttendance) => {
     setSelectedEmployee(employee);
   };
-
-  // Department display names (capitalized)
-  const departmentDisplayNames: Record<Department, string> = {
-    'administration': 'Administration',
-    'supervisor': 'Supervisor',
-    'packing': 'Packing',
-    'production': 'Production',
-    'others': 'Others'
-  };
-
-  // Department display order
-  const departmentOrder: Department[] = ['administration', 'supervisor', 'packing', 'production', 'others'];
 
   const handleEdit = (record: EmployeeAttendance) => {
     setEditingRow(record.id);
@@ -222,6 +239,151 @@ export default function AttendanceTable() {
 
       <div className="space-y-4">
         {departmentOrder.map(dept => {
+          if (dept === 'production') {
+            return (
+              <Card key={dept}>
+                <CardContent className="pt-6">
+                  <h3 className="text-lg font-semibold mb-4">{departmentDisplayNames[dept]}</h3>
+                  {productionSubDeptOrder.map(subDept => {
+                    const hasRecords = categoryOrder.some(category => 
+                      recordsByDepartment.production[subDept][category].length > 0
+                    );
+                    
+                    if (!hasRecords) return null;
+
+                    const sectionId = `production-${subDept}`;
+                    const isExpanded = true; // Always expanded
+
+                    return (
+                      <div key={subDept} className="mb-4">
+                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+                          <ChevronDown className="h-4 w-4" />
+                          {getSubDepartmentDisplayName(subDept)}
+                        </div>
+                        
+                        {categoryOrder.map(category => {
+                          const records = recordsByDepartment.production[subDept][category];
+                          if (records.length === 0) return null;
+
+                          return (
+                            <div key={`${subDept}-${category}`} className="ml-6 mb-4">
+                              <h4 className="text-sm font-medium mb-2">{getCategoryDisplayName(category)}s</h4>
+                              <div className="overflow-x-auto">
+                                <table className="w-full">
+                                  <thead>
+                                    <tr className="border-b">
+                                      <th className="px-4 py-2 text-left text-sm font-medium text-muted-foreground">#</th>
+                                      <th className="px-4 py-2 text-left text-sm font-medium text-muted-foreground">Name</th>
+                                      <th className="px-4 py-2 text-left text-sm font-medium text-muted-foreground">Entry Time</th>
+                                      <th className="px-4 py-2 text-left text-sm font-medium text-muted-foreground">Exit Time</th>
+                                      <th className="px-4 py-2 text-left text-sm font-medium text-muted-foreground">Total Hours</th>
+                                      <th className="px-4 py-2 text-left text-sm font-medium text-muted-foreground">Status</th>
+                                      <th className="px-4 py-2 text-left text-sm font-medium text-muted-foreground">Actions</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y">
+                                    {records.map((record, index) => (
+                                      <tr 
+                                        key={record.id} 
+                                        className="hover:bg-muted/30 transition-colors"
+                                      >
+                                        <td className="px-4 py-2 text-sm">{index + 1}</td>
+                                        <td className="px-4 py-2 text-sm font-medium">
+                                          {record.name}
+                                          {isFemaleStaff(record.name) && (
+                                            <span className="ml-1 text-xs font-semibold text-pink-500 bg-pink-50 rounded-full px-1.5">F</span>
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-2 text-sm">
+                                          {editingRow === record.id ? (
+                                            <Input
+                                              type="time"
+                                              value={editedData?.entryTime || ''}
+                                              onChange={(e) => handleInputChange('entryTime', e.target.value)}
+                                              className="w-32"
+                                            />
+                                          ) : (
+                                            record.entryTime || '-'
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-2 text-sm">
+                                          {editingRow === record.id ? (
+                                            <Input
+                                              type="time"
+                                              value={editedData?.exitTime || ''}
+                                              onChange={(e) => handleInputChange('exitTime', e.target.value)}
+                                              className="w-32"
+                                            />
+                                          ) : (
+                                            record.exitTime || '-'
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-2 text-sm">
+                                          {editingRow === record.id ? editedData?.totalHours.toFixed(1) : record.totalHours.toFixed(1)}
+                                        </td>
+                                        <td className="px-4 py-2 text-sm">
+                                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full ${getStatusColor(editingRow === record.id ? editedData?.status || record.status : record.status)} text-xs`}>
+                                            {getStatusIcon(editingRow === record.id ? editedData?.status || record.status : record.status)} 
+                                            {editingRow === record.id ? editedData?.status || record.status : record.status}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-2 text-sm">
+                                          {editingRow === record.id ? (
+                                            <div className="flex gap-2">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleSave(record)}
+                                                className="h-8 w-8 p-0"
+                                              >
+                                                <Check className="h-4 w-4" />
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={handleCancel}
+                                                className="h-8 w-8 p-0"
+                                              >
+                                                <X className="h-4 w-4" />
+                                              </Button>
+                                            </div>
+                                          ) : (
+                                            <div className="flex gap-2">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleEdit(record)}
+                                                className="h-8 w-8 p-0"
+                                              >
+                                                <Edit2 className="h-4 w-4" />
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleRowClick(record)}
+                                                className="h-8 w-8 p-0"
+                                              >
+                                                <BarChart2 className="h-4 w-4" />
+                                              </Button>
+                                            </div>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            );
+          }
+
           const employees = recordsByDepartment[dept];
           if (employees.length === 0) return null;
 

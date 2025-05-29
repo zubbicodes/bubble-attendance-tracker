@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { EmployeeAttendance } from '@/types';
 import { loadEmployeeHistory, calculateEmployeeStats } from './attendanceUtils';
@@ -59,14 +58,12 @@ export async function downloadExcel(employee: EmployeeAttendance) {
     
     const infoSheet = XLSX.utils.json_to_sheet(employeeInfo);
     XLSX.utils.book_append_sheet(workbook, infoSheet, 'Employee Info');
+
+    // Wait for charts to be rendered
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Try to capture and add charts if possible
-    try {
-      await captureAndAddCharts(workbook, employee.name);
-    } catch (chartError) {
-      console.error('Failed to capture charts:', chartError);
-      // Continue without charts if there's an error
-    }
+    // Capture and add charts
+    await captureAndAddCharts(workbook, employee.name);
     
     // Generate Excel file
     const excelFileName = `${employee.name.replace(/\s+/g, '_')}_Stats_${new Date().toISOString().split('T')[0]}.xlsx`;
@@ -83,93 +80,94 @@ export async function downloadExcel(employee: EmployeeAttendance) {
 
 // Helper function to capture charts and add to workbook
 async function captureAndAddCharts(workbook: XLSX.WorkBook, employeeName: string) {
-  // Check if charts are in the DOM
-  const lineChartElement = document.querySelector('.employee-stats-line-chart');
-  const barChartElement = document.querySelector('.employee-stats-bar-chart');
-  
-  if (!lineChartElement && !barChartElement) return;
-  
-  const canvasPromises = [];
-  
-  if (lineChartElement) {
-    canvasPromises.push(html2canvas(lineChartElement as HTMLElement)
-      .then(canvas => {
-        // Convert canvas to base64 image
-        const imgData = canvas.toDataURL('image/png');
-        
-        // Create a worksheet with the image
-        const ws = XLSX.utils.aoa_to_sheet([
-          ['Working Hours Chart'],
-          ['']
-        ]);
-        
-        // Add the image to the worksheet
-        const imageId = workbook.addImage({
-          base64: imgData,
-          extension: 'png',
-        });
-        
-        ws['!images'] = [
-          { 
+  try {
+    // Check if charts are in the DOM
+    const lineChartElement = document.querySelector('.employee-stats-line-chart');
+    const barChartElement = document.querySelector('.employee-stats-bar-chart');
+    
+    if (!lineChartElement && !barChartElement) {
+      console.warn('Chart elements not found in DOM');
+      return;
+    }
+
+    const chartPromises = [];
+
+    if (lineChartElement) {
+      chartPromises.push(
+        html2canvas(lineChartElement as HTMLElement, {
+          scale: 2, // Higher quality
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        }).then(canvas => {
+          const imgData = canvas.toDataURL('image/png');
+          
+          // Create a worksheet for the line chart
+          const ws = XLSX.utils.aoa_to_sheet([
+            ['Working Hours Trend (Last 14 Days)'],
+            [''],
+            [''] // Space for the image
+          ]);
+          
+          // Add the image to the worksheet
+          ws['!images'] = [{
             name: 'working-hours.png',
             data: imgData,
             position: {
               type: 'twoCellAnchor',
-              from: { col: 0, row: 1 },
+              from: { col: 0, row: 2 },
               to: { col: 10, row: 20 }
             }
-          }
-        ];
-        
-        XLSX.utils.book_append_sheet(workbook, ws, 'Working Hours Chart');
-      }));
-  }
-  
-  if (barChartElement) {
-    canvasPromises.push(html2canvas(barChartElement as HTMLElement)
-      .then(canvas => {
-        // Convert canvas to base64 image
-        const imgData = canvas.toDataURL('image/png');
-        
-        // Create a worksheet with the image
-        const ws = XLSX.utils.aoa_to_sheet([
-          ['Attendance Status Chart'],
-          ['']
-        ]);
-        
-        // Add the image to the worksheet
-        const imageId = workbook.addImage({
-          base64: imgData,
-          extension: 'png',
-        });
-        
-        ws['!images'] = [
-          { 
+          }];
+          
+          XLSX.utils.book_append_sheet(workbook, ws, 'Working Hours Chart');
+        })
+      );
+    }
+    
+    if (barChartElement) {
+      chartPromises.push(
+        html2canvas(barChartElement as HTMLElement, {
+          scale: 2, // Higher quality
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        }).then(canvas => {
+          const imgData = canvas.toDataURL('image/png');
+          
+          // Create a worksheet for the bar chart
+          const ws = XLSX.utils.aoa_to_sheet([
+            ['Attendance Status Distribution'],
+            [''],
+            [''] // Space for the image
+          ]);
+          
+          // Add the image to the worksheet
+          ws['!images'] = [{
             name: 'attendance-status.png',
             data: imgData,
             position: {
               type: 'twoCellAnchor',
-              from: { col: 0, row: 1 },
+              from: { col: 0, row: 2 },
               to: { col: 10, row: 20 }
             }
-          }
-        ];
-        
-        XLSX.utils.book_append_sheet(workbook, ws, 'Attendance Status Chart');
-      }));
+          }];
+          
+          XLSX.utils.book_append_sheet(workbook, ws, 'Attendance Status Chart');
+        })
+      );
+    }
+    
+    await Promise.all(chartPromises);
+  } catch (error) {
+    console.error('Error capturing charts:', error);
+    // Continue without charts if there's an error
   }
-  
-  await Promise.all(canvasPromises);
 }
 
 // Helper function to format date
 function formatDate(dateString: string): string {
-  if (!dateString) return '';
-  
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return dateString;
-  
-  return date.toLocaleDateString('en-US', {
+  return new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric'
@@ -178,14 +176,15 @@ function formatDate(dateString: string): string {
 
 // Helper function to format status
 function formatStatus(status: string): string {
-  switch(status) {
-    case 'onTime': return 'On Time';
-    case 'lateEntry': return 'Late Entry';
-    case 'earlyExit': return 'Early Exit';
-    case 'missingCheckout': return 'Missing Checkout';
-    case 'lessHours': return 'Less Hours';
-    default: return status;
-  }
+  const statusMap: Record<string, string> = {
+    'onTime': 'On Time',
+    'lateEntry': 'Late Entry',
+    'earlyExit': 'Early Exit',
+    'missingCheckout': 'Missing Checkout',
+    'lessHours': 'Less Hours',
+    'overtime': 'Overtime'
+  };
+  return statusMap[status] || status;
 }
 
 // Helper function to format stats for the Excel sheet
@@ -197,6 +196,11 @@ function formatStats(stats: any) {
     'Late Entries': stats.lateEntries,
     'Early Exits': stats.earlyExits,
     'Shortfall Hours': stats.shortfallHours.toFixed(2),
-    'Overtime Hours': stats.overtimeHours.toFixed(2)
+    'Overtime Hours': stats.overtimeHours.toFixed(2),
+    'Sunday Overtime': stats.sundayOvertimeHours.toFixed(2),
+    'Regular Overtime': stats.regularOvertimeHours.toFixed(2),
+    'Sundays Worked': stats.sundaysWorked,
+    'Perfect Attendance Days': stats.perfectAttendanceDays,
+    'Most Frequent Status': formatStatus(stats.mostFrequentStatus)
   };
 }
