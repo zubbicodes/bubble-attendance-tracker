@@ -11,6 +11,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { FileText, File, Image } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
+import { getProductionDetails, getSubDepartmentDisplayName, getCategoryDisplayName } from '@/utils/departmentUtils';
+import { ProductionSubDepartment, EmployeeCategory } from '@/types';
 
 export default function ExportOptions() {
   const { attendanceRecords, date } = useAttendance();
@@ -114,57 +116,143 @@ export default function ExportOptions() {
         doc.text(`${dept.charAt(0).toUpperCase() + dept.slice(1)} (${deptRecords.length})`, 14, yPos);
         yPos += 10;
 
-        // Create simple table for this department
-        const columns = ['Sr.', 'Name', 'Entry', 'Exit', 'Hours', 'Status'];
-        const columnWidths = [10, 60, 25, 25, 20, 40];
-        const startX = 14;
-        let currentX = startX;
-        
-        // Draw header
-        doc.setFillColor(75, 85, 99);
-        doc.setDrawColor(75, 85, 99);
-        doc.setTextColor(255, 255, 255);
-        doc.rect(startX, yPos, 180, 8, 'F');
-        
-        columns.forEach((col, i) => {
-          doc.text(col, currentX + 2, yPos + 6);
-          currentX += columnWidths[i];
-        });
-        
-        yPos += 8;
-        
-        // Draw rows
-        doc.setTextColor(0, 0, 0);
-        deptRecords.forEach((record, index) => {
-          currentX = startX;
-          const rowData = [
-            (index + 1).toString(),
-            record.name,
-            record.entryTime || '-',
-            record.exitTime || '-',
-            record.totalHours.toFixed(1),
-            record.status
-          ];
+        if (dept === 'production') {
+          // Handle production department with sub-departments
+          const productionSubDepts: ProductionSubDepartment[] = ['crochet', 'needle', 'cord'];
+          const categories: EmployeeCategory[] = ['master', 'operator'];
+
+          productionSubDepts.forEach(subDept => {
+            let hasRecords = false;
+            categories.forEach(category => {
+              const records = deptRecords.filter(r => {
+                const { subDepartment, category: empCategory } = getProductionDetails(r.name);
+                return subDepartment === subDept && empCategory === category;
+              });
+
+              if (records.length > 0) {
+                if (!hasRecords) {
+                  // Sub-department heading
+                  yPos += 5;
+                  doc.setFontSize(12);
+                  doc.text(`${getSubDepartmentDisplayName(subDept)}`, 20, yPos);
+                  yPos += 5;
+                  hasRecords = true;
+                }
+
+                // Category heading
+                doc.setFontSize(11);
+                doc.text(`${getCategoryDisplayName(category)}s`, 25, yPos);
+                yPos += 5;
+
+                // Create table for this category
+                const columns = ['Sr.', 'Name', 'Entry', 'Exit', 'Hours', 'Status'];
+                const columnWidths = [10, 60, 25, 25, 20, 40];
+                const startX = 25;
+                let currentX = startX;
+                
+                // Draw header
+                doc.setFillColor(75, 85, 99);
+                doc.setDrawColor(75, 85, 99);
+                doc.setTextColor(255, 255, 255);
+                doc.rect(startX, yPos, 160, 8, 'F');
+                
+                columns.forEach((col, i) => {
+                  doc.text(col, currentX + 2, yPos + 6);
+                  currentX += columnWidths[i];
+                });
+                
+                yPos += 8;
+                
+                // Draw rows
+                doc.setTextColor(0, 0, 0);
+                records.forEach((record, index) => {
+                  currentX = startX;
+                  const rowData = [
+                    (index + 1).toString(),
+                    record.name,
+                    record.entryTime || '-',
+                    record.exitTime || '-',
+                    record.totalHours.toFixed(1),
+                    record.status
+                  ];
+                  
+                  doc.setDrawColor(220, 220, 220);
+                  doc.setFillColor(index % 2 === 0 ? 245 : 255, index % 2 === 0 ? 245 : 255, index % 2 === 0 ? 245 : 255);
+                  doc.rect(startX, yPos, 160, 8, 'F');
+                  doc.setDrawColor(200, 200, 200);
+                  doc.rect(startX, yPos, 160, 8, 'D');
+                  
+                  rowData.forEach((cell, i) => {
+                    doc.text(cell.toString(), currentX + 2, yPos + 6);
+                    currentX += columnWidths[i];
+                  });
+                  
+                  yPos += 8;
+                  
+                  // Add a new page if we're running out of space
+                  if (yPos > 270) {
+                    doc.addPage();
+                    yPos = 20;
+                  }
+                });
+                
+                yPos += 5;
+              }
+            });
+          });
+        } else {
+          // Create simple table for other departments
+          const columns = ['Sr.', 'Name', 'Entry', 'Exit', 'Hours', 'Status'];
+          const columnWidths = [10, 60, 25, 25, 20, 40];
+          const startX = 14;
+          let currentX = startX;
           
-          doc.setDrawColor(220, 220, 220);
-          doc.setFillColor(index % 2 === 0 ? 245 : 255, index % 2 === 0 ? 245 : 255, index % 2 === 0 ? 245 : 255);
+          // Draw header
+          doc.setFillColor(75, 85, 99);
+          doc.setDrawColor(75, 85, 99);
+          doc.setTextColor(255, 255, 255);
           doc.rect(startX, yPos, 180, 8, 'F');
-          doc.setDrawColor(200, 200, 200);
-          doc.rect(startX, yPos, 180, 8, 'D');
           
-          rowData.forEach((cell, i) => {
-            doc.text(cell.toString(), currentX + 2, yPos + 6);
+          columns.forEach((col, i) => {
+            doc.text(col, currentX + 2, yPos + 6);
             currentX += columnWidths[i];
           });
           
           yPos += 8;
           
-          // Add a new page if we're running out of space
-          if (yPos > 270) {
-            doc.addPage();
-            yPos = 20;
-          }
-        });
+          // Draw rows
+          doc.setTextColor(0, 0, 0);
+          deptRecords.forEach((record, index) => {
+            currentX = startX;
+            const rowData = [
+              (index + 1).toString(),
+              record.name,
+              record.entryTime || '-',
+              record.exitTime || '-',
+              record.totalHours.toFixed(1),
+              record.status
+            ];
+            
+            doc.setDrawColor(220, 220, 220);
+            doc.setFillColor(index % 2 === 0 ? 245 : 255, index % 2 === 0 ? 245 : 255, index % 2 === 0 ? 245 : 255);
+            doc.rect(startX, yPos, 180, 8, 'F');
+            doc.setDrawColor(200, 200, 200);
+            doc.rect(startX, yPos, 180, 8, 'D');
+            
+            rowData.forEach((cell, i) => {
+              doc.text(cell.toString(), currentX + 2, yPos + 6);
+              currentX += columnWidths[i];
+            });
+            
+            yPos += 8;
+            
+            // Add a new page if we're running out of space
+            if (yPos > 270) {
+              doc.addPage();
+              yPos = 20;
+            }
+          });
+        }
         
         yPos += 10;
       });
