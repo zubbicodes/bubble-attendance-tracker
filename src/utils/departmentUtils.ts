@@ -25,6 +25,7 @@ export const departmentStructure: DepartmentStructure = {
     'muhammad usman',
     'sufyan ali',
     'mureed abbas'
+    'nadia bibi',
   ],
   production: {
     crochet: {
@@ -63,6 +64,7 @@ export const departmentStructure: DepartmentStructure = {
 // Define female staff members for special working hours
 export const femaleStaff = [
   'Mariyam',
+  'nadia bibi',
   'rukhsana kausar',
   'iqra bibi'
 ];
