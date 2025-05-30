@@ -24,8 +24,8 @@ export const departmentStructure: DepartmentStructure = {
     'asif ali',
     'muhammad usman',
     'sufyan ali',
-    'mureed abbas'
-    'nadia bibi',
+    'mureed abbas',
+    'nadia bibi'
   ],
   production: {
     crochet: {
