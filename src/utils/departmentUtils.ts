@@ -37,6 +37,7 @@ export const departmentStructure: DepartmentStructure = {
         'noor ali',
         'shahzaib shah',
         'sohaib shah',
+        'muhammad saif',
         
       ]
     },
