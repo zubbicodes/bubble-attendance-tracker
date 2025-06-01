@@ -9,7 +9,8 @@ export const departmentStructure: DepartmentStructure = {
     'javed shakoor',
     'faisal aslam',
     'muhammad zaryab',
-    'rizwan cheema'
+    'rizwan cheema',
+    'usama ijaz'
   ],
   supervisor: [
     'shafqat',
@@ -38,6 +39,7 @@ export const departmentStructure: DepartmentStructure = {
         'shahzaib shah',
         'sohaib shah',
         'muhammad saif',
+        'muhammad ramzan',
         
       ]
     },
