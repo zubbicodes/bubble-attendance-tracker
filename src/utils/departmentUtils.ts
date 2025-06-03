@@ -47,9 +47,11 @@ export const departmentStructure: DepartmentStructure = {
       master: [
         'deedar ali',
       ],
-      operator: [
+      operator: [  
         'irfan khokhar',
         'bilal ali',
+        'muhammad nadeem',
+        'mohsin abid',
       ]
     },
     cord: {
