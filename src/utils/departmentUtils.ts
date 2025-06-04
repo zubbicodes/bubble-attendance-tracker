@@ -79,7 +79,7 @@ export const femaleStaff = [
 // Female staff: 10 hours (8am to 6pm)
 // All others: 12 hours (8am to 8pm)
 export const defaultDepartmentSettings = {
-  administration: { entry: "09:00 AM", exit: "06:00 PM" },
+  administration: { entry: "10:00 AM", exit: "07:00 PM" },
   supervisor: { entry: "08:00 AM", exit: "08:00 PM" },
   packing: { entry: "08:00 AM", exit: "08:00 PM" },
   production: { entry: "08:00 AM", exit: "08:00 PM" },
@@ -151,7 +151,7 @@ export function getCategoryDisplayName(category: EmployeeCategory): string {
 // Get expected working hours for an employee based on department and gender
 export function getExpectedWorkHours(name: string, department: Department): number {
   if (department === 'administration') {
-    return 9; // 9 hours for administration
+    return 9; // 9 hours for administration (10 AM to 7 PM)
   } else if (isFemaleStaff(name)) {
     return 10; // 10 hours for female staff
   } else {
@@ -162,10 +162,10 @@ export function getExpectedWorkHours(name: string, department: Department): numb
 // Get expected entry/exit times for an employee
 export function getExpectedTimes(name: string, department: Department): { entry: string, exit: string } {
   if (department === 'administration') {
-    return { entry: "09:00 AM", exit: "06:00 PM" }; // 9am to 6pm
+    return { entry: "10:00 AM", exit: "07:00 PM" }; // 10 AM to 7 PM
   } else if (isFemaleStaff(name)) {
-    return { entry: "08:00 AM", exit: "06:00 PM" }; // 8am to 6pm for female staff
+    return { entry: "08:00 AM", exit: "06:00 PM" }; // 8 AM to 6 PM for female staff
   } else {
-    return { entry: "08:00 AM", exit: "08:00 PM" }; // 8am to 8pm for everyone else
+    return { entry: "08:00 AM", exit: "08:00 PM" }; // 8 AM to 8 PM for everyone else
   }
 }

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,10 +24,10 @@ export default function DepartmentSettingsDialog() {
   const { toast } = useToast();
   
   // Updated default times based on the requirement:
-  // Administration: 9 hours (9am to 6pm)
-  // All others: 12 hours (8am to 8pm)
+  // Administration: 9 hours (10 AM to 7 PM)
+  // All others: 12 hours (8 AM to 8 PM)
   const defaultTimes = {
-    administration: { entry: "09:00 AM", exit: "06:00 PM" },
+    administration: { entry: "10:00 AM", exit: "07:00 PM" },
     supervisor: { entry: "08:00 AM", exit: "08:00 PM" },
     packing: { entry: "08:00 AM", exit: "08:00 PM" },
     production: { entry: "08:00 AM", exit: "08:00 PM" },
