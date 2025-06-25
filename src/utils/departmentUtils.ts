@@ -55,6 +55,7 @@ export const departmentStructure: DepartmentStructure = {
         'muhammad nadeem',
         'mohsin abid',
         'muhammad naveed',
+        'usman arif',
       ]
     },
     cord: {
