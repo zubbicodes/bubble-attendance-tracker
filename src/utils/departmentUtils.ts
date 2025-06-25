@@ -10,7 +10,8 @@ export const departmentStructure: DepartmentStructure = {
     'faisal aslam',
     'muhammad zaryab',
     'rizwan cheema',
-    'usama ijaz'
+    'usama ijaz',
+    'muhammad hamza'
   ],
   supervisor: [
     'shafqat',
@@ -40,6 +41,7 @@ export const departmentStructure: DepartmentStructure = {
         'sohaib shah',
         'muhammad saif',
         'muhammad ramzan',
+        'zeeshan ali',
         
       ]
     },
@@ -52,14 +54,16 @@ export const departmentStructure: DepartmentStructure = {
         'bilal ali',
         'muhammad nadeem',
         'mohsin abid',
+        'muhammad naveed',
       ]
     },
     cord: {
       master: [
-        'tanveer maseeh',
+        
       ],
       operator: [
-        'zain ali'
+        'zain ali',
+        'tanveer maseeh',
       ]
     }
   },
