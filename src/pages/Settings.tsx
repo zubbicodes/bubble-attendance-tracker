@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AttendanceProvider } from '@/contexts/AttendanceContext';
 import DepartmentSettings from '@/components/DepartmentSettings';
+import ReportsSection from '@/components/ReportsSection';
 
 const Settings = () => {
   return (
@@ -22,7 +23,9 @@ const Settings = () => {
             </CardContent>
           </Card>
           
-          <Card>
+          <ReportsSection />
+          
+          <Card className="mt-6">
             <CardHeader>
               <CardTitle>About</CardTitle>
             </CardHeader>
