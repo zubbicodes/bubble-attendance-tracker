@@ -31,7 +31,8 @@ export const departmentStructure: DepartmentStructure = {
     'mureed abbas',
     'nadia bibi',
     'ruqaiya kabir',
-    'muqadas bibi'
+    'muqadas bibi',
+    'naima bibi'
   ],
   production: {
     crochet: {
@@ -84,7 +85,8 @@ export const femaleStaff = [
   'rukhsana kausar',
   'iqra bibi',
   'ruqaiya kabir',
-  'muqadas bibi'
+  'muqadas bibi',
+  'naima bibi'
 ];
 
 // Update default settings to reflect the correct working hours:
