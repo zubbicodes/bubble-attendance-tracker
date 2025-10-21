@@ -12,15 +12,15 @@ import { Card, CardContent } from '@/components/ui/card';
 const Index = () => {
   return (
     <AttendanceProvider>
-      <div className="min-h-screen bg-gray-50">
-        <div className="container py-8">
+      <div className="min-h-screen">
+        <div className="container max-w-7xl mx-auto py-6 px-4">
           <Header />
           <FileUploader />
           
-          <div className="grid gap-6">
-            <Card>
+          <div className="grid gap-6 mt-6">
+            <Card className="shadow-sm border-border/40">
               <CardContent className="pt-6">
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex justify-between items-center mb-6">
                   <StatusFilters />
                   <ExportOptions />
                 </div>

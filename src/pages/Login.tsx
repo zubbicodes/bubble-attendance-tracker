@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Calendar } from 'lucide-react';
 
 const Login = () => {
   const [accessCode, setAccessCode] = useState('');
@@ -40,41 +40,54 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="bg-primary/10 p-3 rounded-full">
-              <ShieldCheck className="h-8 w-8 text-primary" />
-            </div>
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="w-full max-w-md px-4">
+        <div className="text-center mb-8">
+          <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-primary/20">
+            <Calendar className="h-8 w-8 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl">ADSONS Attendance Manager</CardTitle>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent>
-            <div>
-              <label htmlFor="accessCode" className="block text-sm font-medium text-gray-700 mb-1">
-                Access Code
-              </label>
-              <Input 
-                id="accessCode"
-                type="password"
-                value={accessCode}
-                onChange={(e) => setAccessCode(e.target.value)}
-                className={error ? "border-red-500" : ""}
-                placeholder="Enter access code"
-                required
-              />
-              {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button type="submit" className="w-full">
-              Access System
-            </Button>
-          </CardFooter>
-        </form>
-      </Card>
+          <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
+          <p className="text-muted-foreground">ADSONS Attendance Management System</p>
+        </div>
+
+        <Card className="shadow-lg border-border/40">
+          <CardHeader>
+            <CardTitle className="text-center">Sign In</CardTitle>
+            <CardDescription className="text-center">
+              Enter your access code to continue
+            </CardDescription>
+          </CardHeader>
+          <form onSubmit={handleSubmit}>
+            <CardContent>
+              <div className="space-y-2">
+                <Input 
+                  id="accessCode"
+                  type="password"
+                  value={accessCode}
+                  onChange={(e) => {
+                    setAccessCode(e.target.value);
+                    setError('');
+                  }}
+                  className={`h-11 ${error ? "border-destructive" : ""}`}
+                  placeholder="Enter Access Code"
+                  required
+                />
+                {error && <p className="text-sm text-destructive">{error}</p>}
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button type="submit" className="w-full h-11">
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                Access System
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
+
+        <p className="text-center text-sm text-muted-foreground mt-6">
+          Secure access to attendance management
+        </p>
+      </div>
     </div>
   );
 };

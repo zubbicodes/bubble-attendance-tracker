@@ -8,7 +8,8 @@ const statusLabels: Record<AttendanceStatus, { label: string }> = {
   lateEntry: { label: 'Late Entry' },
   earlyExit: { label: 'Early Exit' },
   missingCheckout: { label: 'Missing Checkout' },
-  lessHours: { label: 'Less Working Hours' }
+  lessHours: { label: 'Less Working Hours' },
+  overtime: { label: 'Overtime' }
 };
 
 export default function StatusFilters() {

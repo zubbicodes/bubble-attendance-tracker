@@ -65,11 +65,12 @@ export default {
 				},
 				// Status colors for attendance
 				status: {
-					onTime: '#4ade80', // green-400
-					lateEntry: '#fb923c', // orange-400
-					earlyExit: '#facc15', // yellow-400
-					missingCheckout: '#f87171', // red-400
-					lessHours: '#60a5fa', // blue-400
+					onTime: 'hsl(142 76% 36%)',
+					lateEntry: 'hsl(25 95% 53%)',
+					earlyExit: 'hsl(48 96% 53%)',
+					missingCheckout: 'hsl(0 84% 60%)',
+					lessHours: 'hsl(217 91% 60%)',
+					overtime: 'hsl(270 91% 60%)',
 				}
 			},
 			borderRadius: {
