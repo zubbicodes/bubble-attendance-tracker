@@ -14,7 +14,8 @@ export const departmentStructure: DepartmentStructure = {
     'muhammad hamza',
     'irfan cheema',
     'shahzad ali',
-    'irfan ghani'
+    'irfan ghani',
+    'mazhar fareed'
   ],
   supervisor: [
     'shafqat',
