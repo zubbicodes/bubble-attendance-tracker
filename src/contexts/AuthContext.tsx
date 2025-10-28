@@ -30,7 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = (code: string): boolean => {
-    if (code === 'ads01') {
+    if (code === 'ads0015') {
       setIsAuthenticated(true);
       localStorage.setItem('ads_authenticated', 'true');
       return true;
